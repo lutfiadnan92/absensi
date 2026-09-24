@@ -50,6 +50,7 @@
             id="username"
             required
             autofocus
+            autocomplete="username"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           >
         </div>
@@ -59,12 +60,13 @@
             type="password"
             id="password"
             required
+            autocomplete="current-password"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           >
         </div>
         <button
           type="submit"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors shadow"
         >
           Masuk
         </button>
@@ -74,10 +76,10 @@
       </div>
     </div>
 
-    <!-- Main Container -->
+    <!-- Main Application Container -->
     <div
       id="app-container"
-      class="hidden w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden self-start mt-4 sm:mt-10 transition-all"
+      class="hidden w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden self-start mt-2 sm:mt-6 transition-all"
     >
         
       <!-- Header Section -->
@@ -91,15 +93,9 @@
         <div class="flex gap-2">
           <button
             id="export-pdf-btn"
-            class="no-export bg-white text-blue-600 hover:bg-blue-50 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+            class="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center"
           >
-            <svg
-              class="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            ><path
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
@@ -109,7 +105,7 @@
           </button>
           <button
             id="logout-btn"
-            class="no-export bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center"
           >
             Logout
           </button>
@@ -118,58 +114,135 @@
 
       <div class="p-6">
         <!-- Pengaturan Judul Laporan -->
-        <div class="no-export mb-6 bg-blue-50 p-5 rounded-xl border border-blue-100">
+        <div class="mb-6 bg-blue-50 p-5 rounded-xl border border-blue-100">
           <label for="jenis-sambung" class="block text-sm font-semibold text-blue-800 mb-2">Jenis Sambung (Untuk Judul Laporan PDF)</label>
           <input
             type="text"
             id="jenis-sambung"
-            placeholder="Contoh: Reguler, Shift Pagi, dll..."
-            class="w-full md:w-1/2 px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+            placeholder="Contoh: Reguler, Shift Pagi, Sesi 1..."
+            class="w-full md:w-1/2 px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
           >
         </div>
 
-        <!-- Form Input (Will be hidden during PDF export) -->
-        <form
-          id="attendance-form"
-          class="no-export mb-8 bg-gray-50 p-5 rounded-xl border border-gray-200"
-        >
-          <h2 class="text-lg font-semibold mb-4 text-gray-700">Catat Kehadiran</h2>
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    
-            <div class="md:col-span-2">
-              <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-              <input
-                type="text"
-                id="name"
-                required
-                placeholder="Masukkan nama..."
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              >
+        <!-- Form Section dengan Tab Switcher (Single & Bulk Input) -->
+        <div class="mb-8 bg-gray-50 p-5 rounded-xl border border-gray-200">
+          <!-- Tab Menu Header -->
+          <div class="flex border-b border-gray-200 mb-4 pb-2 gap-4">
+            <button
+              type="button"
+              id="tab-single"
+              class="font-semibold text-blue-600 border-b-2 border-blue-600 pb-2 text-sm focus:outline-none transition-all"
+            >
+              Input Satuan
+            </button>
+            <button
+              type="button"
+              id="tab-bulk"
+              class="font-semibold text-gray-500 hover:text-blue-600 pb-2 text-sm focus:outline-none transition-all"
+            >
+              Input Banyak Nama (Massal)
+            </button>
+          </div>
+
+          <!-- 1. Form Input Satuan -->
+          <form id="attendance-form">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">Catat Kehadiran</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        
+              <div class="md:col-span-2">
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                <input
+                  type="text"
+                  id="name"
+                  placeholder="Masukkan nama..."
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                >
+              </div>
+                        
+              <div>
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  id="status"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                >
+                  <option value="Hadir">Hadir</option>
+                  <option value="Tidak Hadir">Tidak Hadir</option>
+                  <option value="Izin">Izin</option>
+                  <option value="Sakit">Sakit</option>
+                </select>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow transition-colors"
+                >
+                  Simpan
+                </button>
+              </div>
             </div>
+          </form>
+
+          <!-- 2. Form Input Banyak Nama Sekaligus -->
+          <div id="bulk-attendance-container" class="hidden">
+            <h2 class="text-lg font-semibold mb-1 text-gray-700">Input Banyak Nama Sekaligus</h2>
+            <p class="text-xs text-gray-500 mb-3">Tulis atau tempel (paste) daftar nama. Pisahkan nama dengan baris baru (Enter).</p>
                     
-            <div>
-              <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                id="status"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
-              >
-                <option value="Hadir">Hadir</option>
-                <option value="Tidak Hadir">Tidak Hadir</option>
-                <option value="Izin">Izin</option>
-                <option value="Sakit">Sakit</option>
-              </select>
+            <div class="mb-3">
+              <textarea id="bulk-names" rows="4" placeholder="Contoh:&#10;Budi Santoso&#10;Siti Aminah&#10;Ahmad Subagyo" 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono text-sm"></textarea>
             </div>
 
-            <div>
-              <button
-                type="submit"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow transition-colors"
+            <button
+              type="button"
+              id="btn-generate-bulk"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow transition-colors"
+            >
+              Buat Daftar Centang Kehadiran
+            </button>
+
+            <!-- Area Checklist Hasil Generate -->
+            <div id="bulk-checklist-wrapper" class="hidden border-t border-gray-200 pt-4 mt-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <span class="text-sm font-semibold text-gray-700">Atur Status Kehadiran:</span>
+                <div class="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    id="btn-bulk-all-hadir"
+                    class="bg-green-100 hover:bg-green-200 text-green-800 font-medium px-2 py-1 rounded border border-green-300"
+                  >Set Semua Hadir</button>
+                  <button
+                    type="button"
+                    id="btn-bulk-all-tidakhadir"
+                    class="bg-red-100 hover:bg-red-200 text-red-800 font-medium px-2 py-1 rounded border border-red-300"
+                  >Set Semua Tidak Hadir</button>
+                </div>
+              </div>
+
+              <!-- Daftar Nama Hasil Parse -->
+              <div
+                id="bulk-list-items"
+                class="max-h-60 overflow-y-auto space-y-2 mb-4 p-2 bg-white rounded-lg border border-gray-200"
               >
-                Simpan
+                <!-- Item baris nama generated via JS -->
+              </div>
+
+              <button
+                type="button"
+                id="btn-save-bulk"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-lg shadow transition-colors flex justify-center items-center gap-2"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  ></path></svg>
+                Simpan Semua Data Kehadiran
               </button>
             </div>
           </div>
-        </form>
+        </div>
 
         <!-- Table Section -->
         <div class="overflow-x-auto rounded-lg border border-gray-200">
@@ -192,15 +265,14 @@
                   scope="col"
                   class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
                 >Waktu</th>
-                <!-- Aksi column hidden during export -->
                 <th
                   scope="col"
-                  class="no-export px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24"
+                  class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24"
                 >Aksi</th>
               </tr>
             </thead>
             <tbody id="table-body" class="bg-white divide-y divide-gray-200">
-              <!-- Data will be populated here via JavaScript -->
+              <!-- Data akan diisi lewat JS -->
             </tbody>
           </table>
         </div>
@@ -212,7 +284,6 @@
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            aria-hidden="true"
           >
             <path
               stroke-linecap="round"
@@ -226,7 +297,7 @@
         </div>
             
         <!-- Clear All Button -->
-        <div class="mt-4 flex justify-end no-export">
+        <div class="mt-4 flex justify-end">
           <button
             id="clear-all-btn"
             class="text-red-600 hover:text-red-800 text-sm font-medium transition-colors hidden"
