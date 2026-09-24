@@ -1,7 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  /* -------------------------------------------------------------
-                     1. INISIALISASI STORAGE (Kredensial, Data Absen, & Token)
-                     ------------------------------------------------------------- */
   const defaultCredentials = { username: "admin", password: "admin123" };
   if (!localStorage.getItem("credentials_json")) {
     localStorage.setItem("credentials_json", JSON.stringify(defaultCredentials));
@@ -18,9 +15,10 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("attendance_json", JSON.stringify([]));
   }
 
-  /* -------------------------------------------------------------
-                     2. ELEMEN DOM & STATE MANAGEMENT
-                     ------------------------------------------------------------- */
+  // Set untuk menyimpan ID baris yang dicentang di tabel
+  let selectedIds = new Set();
+
+  /* DOM Elements */
   const loginContainer = document.getElementById("login-container");
   const appContainer = document.getElementById("app-container");
   const loginForm = document.getElementById("login-form");
@@ -37,6 +35,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const dateDisplay = document.getElementById("current-date");
   const exportPdfBtn = document.getElementById("export-pdf-btn");
 
+  // DOM Checkbox & Table Bulk Control
+  const selectAllCheckbox = document.getElementById("select-all-checkbox");
+  const tableBulkActionBar = document.getElementById("table-bulk-action-bar");
+  const selectedCountText = document.getElementById("selected-count-text");
+  const tableBulkStatusSelect = document.getElementById("table-bulk-status-select");
+  const btnApplyTableBulkStatus = document.getElementById("btn-apply-table-bulk-status");
+  const btnDeleteTableBulk = document.getElementById("btn-delete-table-bulk");
+
+  // DOM Summary Stats
+  const statTotal = document.getElementById("stat-total");
+  const statHadir = document.getElementById("stat-hadir");
+  const statTidakHadir = document.getElementById("stat-tidakhadir");
+  const statIzin = document.getElementById("stat-izin");
+  const statSakit = document.getElementById("stat-sakit");
+
   // DOM Tabs & Bulk Input
   const tabSingle = document.getElementById("tab-single");
   const tabBulk = document.getElementById("tab-bulk");
@@ -49,9 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnBulkAllHadir = document.getElementById("btn-bulk-all-hadir");
   const btnBulkAllTidakHadir = document.getElementById("btn-bulk-all-tidakhadir");
 
-  /* -------------------------------------------------------------
-                     3. FUNGSI AUTHENTICATION & TOKEN SIMULATION (Access 2h, Refresh 7d)
-                     ------------------------------------------------------------- */
   function createTokens(username) {
     const now = Date.now();
     const accessTokenExp = now + 2 * 60 * 60 * 1000; // 2 Jam
@@ -71,16 +81,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const tokens = JSON.parse(tokenString);
       const now = Date.now();
 
-      // Cek Access Token
       const accessData = JSON.parse(atob(tokens.accessToken));
-      if (accessData.exp > now) {
-        return true;
-      }
+      if (accessData.exp > now) return true;
 
-      // Jika Access Token Kadaluarsa, Cek Refresh Token
       const refreshData = JSON.parse(atob(tokens.refreshToken));
       if (refreshData.exp > now) {
-        // Terbitkan Access Token baru secara transparan
         const newTokens = createTokens(refreshData.username);
         localStorage.setItem("auth_token_json", JSON.stringify(newTokens));
         return true;
@@ -104,7 +109,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Submit Form Login
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const enteredUser = usernameInput.value.trim();
@@ -116,7 +120,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const tokens = createTokens(enteredUser);
       localStorage.setItem("auth_token_json", JSON.stringify(tokens));
 
-      // Reset Input & Buka App
       usernameInput.value = "";
       passwordInput.value = "";
       checkAuth();
@@ -138,7 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Logout
   logoutBtn.addEventListener("click", () => {
     localStorage.removeItem("auth_token_json");
     checkAuth();
@@ -152,9 +154,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* -------------------------------------------------------------
-                     4. TAB NAVIGATION & BULK INPUT HANDLERS
-                     ------------------------------------------------------------- */
   tabSingle.addEventListener("click", () => {
     singleForm.classList.remove("hidden");
     bulkContainer.classList.add("hidden");
@@ -232,20 +231,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = capitalize(nameEl.textContent.trim());
       const status = itemStatuses[index].value;
 
-      // Penjagaan: Cek duplikasi di database dan di dalam batch input ini
       const existInRecords = records.some((r) => r.name.toLowerCase() === name.toLowerCase());
       const existInBatch = toSave.some((item) => item.name.toLowerCase() === name.toLowerCase());
 
       if (existInRecords || existInBatch) {
-        if (!duplicates.includes(name)) {
-          duplicates.push(name);
-        }
+        if (!duplicates.includes(name)) duplicates.push(name);
       } else {
         toSave.push({ name, status });
       }
     });
 
-    // Jika ditemukan nama duplikat, tampilkan peringatan
     if (duplicates.length > 0) {
       Swal.fire({
         icon: "warning",
@@ -256,13 +251,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Input Massal: Kolom Waktu selalu diisi "-" (waktu khusus untuk input satuan)
     toSave.forEach((item, index) => {
       records.push({
         id: Date.now() + index,
         name: item.name,
         status: item.status,
         time: "-",
+        source: "bulk",
       });
     });
 
@@ -283,9 +278,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* -------------------------------------------------------------
-                     5. DATA HELPER & SINGLE FORM HANDLERS
-                     ------------------------------------------------------------- */
   function capitalize(str) {
     return str.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
   }
@@ -299,7 +291,6 @@ document.addEventListener("DOMContentLoaded", () => {
     dateDisplay.textContent = new Date().toLocaleDateString("id-ID", options);
   }
 
-  // Single Attendance Submit (Waktu dicatat khusus untuk Input Satuan)
   singleForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const nameValue = capitalize(nameInput.value.trim());
@@ -307,7 +298,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!nameValue) return;
 
-    // Penjagaan: Cek apakah nama sudah ada dalam daftar absensi
     const isExist = records.some((r) => r.name.toLowerCase() === nameValue.toLowerCase());
     if (isExist) {
       Swal.fire({
@@ -327,6 +317,7 @@ document.addEventListener("DOMContentLoaded", () => {
       name: nameValue,
       status: statusValue,
       time: statusValue === "Hadir" ? timeStr : "-",
+      source: "single",
     });
 
     saveToStorage();
@@ -345,12 +336,55 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  function updateSummary() {
+    const total = records.length;
+    const hadir = records.filter((r) => r.status === "Hadir").length;
+    const tidakHadir = records.filter((r) => r.status === "Tidak Hadir").length;
+    const izin = records.filter((r) => r.status === "Izin").length;
+    const sakit = records.filter((r) => r.status === "Sakit").length;
+
+    statTotal.textContent = total;
+    statHadir.textContent = hadir;
+    statTidakHadir.textContent = tidakHadir;
+    statIzin.textContent = izin;
+    statSakit.textContent = sakit;
+  }
+
+  function updateTableBulkBar() {
+    if (selectedIds.size > 0) {
+      tableBulkActionBar.classList.remove("hidden");
+      selectedCountText.textContent = `${selectedIds.size} data dipilih`;
+    } else {
+      tableBulkActionBar.classList.add("hidden");
+    }
+
+    // Pengaturan Checkbox "Select All"
+    if (records.length > 0 && selectedIds.size === records.length) {
+      selectAllCheckbox.checked = true;
+      selectAllCheckbox.indeterminate = false;
+    } else if (selectedIds.size > 0 && selectedIds.size < records.length) {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = true;
+    } else {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+    }
+  }
+
   function renderTable() {
     tableBody.innerHTML = "";
+    updateSummary();
+
+    // Bersihkan ID terpilih yang mungkin sudah terhapus
+    const currentIds = new Set(records.map((r) => r.id));
+    selectedIds.forEach((id) => {
+      if (!currentIds.has(id)) selectedIds.delete(id);
+    });
 
     if (records.length === 0) {
       emptyState.classList.remove("hidden");
       clearAllBtn.classList.add("hidden");
+      updateTableBulkBar();
       return;
     }
 
@@ -359,6 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     records.forEach((record, index) => {
       const row = document.createElement("tr");
+      const isChecked = selectedIds.has(record.id);
 
       let badgeClass = "bg-gray-100 text-gray-800";
       if (record.status === "Hadir") badgeClass = "bg-green-100 text-green-800";
@@ -366,8 +401,13 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (record.status === "Izin") badgeClass = "bg-yellow-100 text-yellow-800";
       else if (record.status === "Sakit") badgeClass = "bg-purple-100 text-purple-800";
 
+      row.className = isChecked ? "bg-blue-50/50" : "";
+
       row.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                        <td class="px-4 py-4 text-center">
+                            <input type="checkbox" class="row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" data-id="${record.id}" ${isChecked ? "checked" : ""}>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 capitalize">${record.name}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
@@ -376,14 +416,196 @@ document.addEventListener("DOMContentLoaded", () => {
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.time}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                            <button onclick="deleteRecord(${record.id})" class="text-red-500 hover:text-red-700 transition-colors p-1" title="Hapus">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
+                            <div class="flex items-center justify-center space-x-2">
+                                <button onclick="editRecord(${record.id})" class="text-blue-500 hover:text-blue-700 transition-colors p-1" title="Edit Baris">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <button onclick="deleteRecord(${record.id})" class="text-red-500 hover:text-red-700 transition-colors p-1" title="Hapus Baris">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
                         </td>
                     `;
       tableBody.appendChild(row);
     });
+
+    updateTableBulkBar();
   }
+
+  /* Event Listener Checkbox Centang Semua */
+  selectAllCheckbox.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      records.forEach((r) => selectedIds.add(r.id));
+    } else {
+      selectedIds.clear();
+    }
+    renderTable();
+  });
+
+  /* Event Listener Checkbox Per Baris (Delegasi Event) */
+  tableBody.addEventListener("change", (e) => {
+    if (e.target.classList.contains("row-checkbox")) {
+      const id = Number(e.target.getAttribute("data-id"));
+      if (e.target.checked) {
+        selectedIds.add(id);
+      } else {
+        selectedIds.delete(id);
+      }
+      renderTable();
+    }
+  });
+
+  /* Aksi Massal Status Kehadiran dari Tabel */
+  btnApplyTableBulkStatus.addEventListener("click", () => {
+    const newStatus = tableBulkStatusSelect.value;
+    if (!newStatus) {
+      Swal.fire({
+        icon: "warning",
+        title: "Pilih Status",
+        text: "Silakan pilih status kehadiran terlebih dahulu!",
+        confirmButtonColor: "#2563eb",
+      });
+      return;
+    }
+
+    if (selectedIds.size === 0) return;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+    records.forEach((record) => {
+      if (selectedIds.has(record.id)) {
+        record.status = newStatus;
+        // Penyesuaian Waktu:
+        if (newStatus === "Hadir") {
+          if (record.source === "bulk") {
+            record.time = "-";
+          } else if (record.time === "-") {
+            record.time = timeStr;
+          }
+        } else {
+          record.time = "-";
+        }
+      }
+    });
+
+    saveToStorage();
+    renderTable();
+
+    tableBulkStatusSelect.value = "";
+
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: "success",
+      title: `Status ${selectedIds.size} data diperbarui!`,
+      showConfirmButton: false,
+      timer: 1500,
+    });
+  });
+
+  /* Aksi Massal Hapus Terpilih dari Tabel */
+  btnDeleteTableBulk.addEventListener("click", () => {
+    if (selectedIds.size === 0) return;
+
+    Swal.fire({
+      title: `Hapus ${selectedIds.size} data terpilih?`,
+      text: "Data yang dihapus tidak dapat dikembalikan!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Batal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        records = records.filter((record) => !selectedIds.has(record.id));
+        selectedIds.clear();
+        saveToStorage();
+        renderTable();
+        Swal.fire("Terhapus!", "Data terpilih berhasil dihapus.", "success");
+      }
+    });
+  });
+
+  /* Edit Baris Satuan */
+  window.editRecord = function (id) {
+    const record = records.find((r) => r.id === id);
+    if (!record) return;
+
+    Swal.fire({
+      title: "Edit Data Kehadiran",
+      html: `
+                        <div class="text-left mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                            <input id="swal-edit-name" class="swal2-input !m-0 !w-full" value="${record.name}">
+                        </div>
+                        <div class="text-left mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran</label>
+                            <select id="swal-edit-status" class="swal2-select !m-0 !w-full">
+                                <option value="Hadir" ${record.status === "Hadir" ? "selected" : ""}>Hadir</option>
+                                <option value="Tidak Hadir" ${record.status === "Tidak Hadir" ? "selected" : ""}>Tidak Hadir</option>
+                                <option value="Izin" ${record.status === "Izin" ? "selected" : ""}>Izin</option>
+                                <option value="Sakit" ${record.status === "Sakit" ? "selected" : ""}>Sakit</option>
+                            </select>
+                        </div>
+                    `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#2563eb",
+      preConfirm: () => {
+        const newName = capitalize(document.getElementById("swal-edit-name").value.trim());
+        const newStatus = document.getElementById("swal-edit-status").value;
+
+        if (!newName) {
+          Swal.showValidationMessage("Nama tidak boleh kosong");
+          return false;
+        }
+
+        const isExist = records.some(
+          (r) => r.id !== id && r.name.toLowerCase() === newName.toLowerCase(),
+        );
+        if (isExist) {
+          Swal.showValidationMessage(`Nama "${newName}" sudah ada di dalam daftar!`);
+          return false;
+        }
+
+        return { newName, newStatus };
+      },
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const { newName, newStatus } = result.value;
+        record.name = newName;
+
+        if (newStatus === "Hadir") {
+          if (record.source === "bulk") {
+            record.time = "-";
+          } else if (record.time === "-") {
+            const now = new Date();
+            record.time = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+          }
+        } else {
+          record.time = "-";
+        }
+
+        record.status = newStatus;
+
+        saveToStorage();
+        renderTable();
+
+        Swal.fire({
+          toast: true,
+          position: "top-end",
+          icon: "success",
+          title: "Data berhasil diperbarui!",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      }
+    });
+  };
 
   window.deleteRecord = function (id) {
     Swal.fire({
@@ -398,6 +620,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }).then((result) => {
       if (result.isConfirmed) {
         records = records.filter((record) => record.id !== id);
+        selectedIds.delete(id);
         saveToStorage();
         renderTable();
         Swal.fire("Terhapus!", "Data berhasil dihapus.", "success");
@@ -418,6 +641,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }).then((result) => {
       if (result.isConfirmed) {
         records = [];
+        selectedIds.clear();
         saveToStorage();
         renderTable();
         Swal.fire("Berhasil!", "Semua data absensi telah dihapus.", "success");
@@ -425,9 +649,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* -------------------------------------------------------------
-                     6. EXPORT PDF FUNCTIONALITY
-                     ------------------------------------------------------------- */
+  /* Export PDF */
   exportPdfBtn.addEventListener("click", () => {
     if (records.length === 0) {
       Swal.fire({
@@ -447,29 +669,48 @@ document.addEventListener("DOMContentLoaded", () => {
       year: "numeric",
     });
 
+    const hadir = records.filter((r) => r.status === "Hadir").length;
+    const tidakHadir = records.filter((r) => r.status === "Tidak Hadir").length;
+    const izin = records.filter((r) => r.status === "Izin").length;
+    const sakit = records.filter((r) => r.status === "Sakit").length;
+
     let tableRows = "";
     records.forEach((record, index) => {
       tableRows += `
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${index + 1}</td>
-                            <td style="border: 1px solid #000; padding: 8px; text-transform: capitalize;">${record.name}</td>
-                            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${record.status}</td>
-                            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${record.time}</td>
+                        <tr style="page-break-inside: avoid !important; break-inside: avoid !important;">
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${index + 1}</td>
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-transform: capitalize;">${record.name}</td>
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.status}</td>
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.time}</td>
                         </tr>
                     `;
     });
 
     const pdfContent = `
                     <div style="font-family: Arial, sans-serif; padding: 20px; color: #000; background-color: #fff;">
+                        <style>
+                            table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+                            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+                            thead { display: table-header-group; }
+                        </style>
                         <h2 style="text-align: center; margin-bottom: 5px; font-size: 20px; font-weight: bold; text-transform: uppercase;">
                             Absensi ${jenisSambung}
                         </h2>
-                        <p style="text-align: center; margin-top: 0; margin-bottom: 20px; font-size: 14px; color: #444;">
+                        <p style="text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 14px; color: #444;">
                             ${pdfDate}
                         </p>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
+                        
+                        <div style="margin-bottom: 15px; font-size: 12px; border: 1px solid #ccc; padding: 8px; background-color: #f9f9f9; display: flex; justify-content: space-around;">
+                            <span><b>Total:</b> ${records.length}</span>
+                            <span><b>Hadir:</b> ${hadir}</span>
+                            <span><b>Tidak Hadir:</b> ${tidakHadir}</span>
+                            <span><b>Izin:</b> ${izin}</span>
+                            <span><b>Sakit:</b> ${sakit}</span>
+                        </div>
+
+                        <table>
                             <thead>
-                                <tr style="background-color: #f2f2f2;">
+                                <tr style="background-color: #f2f2f2; page-break-inside: avoid !important; break-inside: avoid !important;">
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 8%;">No</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 48%;">Nama</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 24%;">Status</th>
@@ -487,8 +728,9 @@ document.addEventListener("DOMContentLoaded", () => {
       margin: [0.5, 0.5, 0.5, 0.5],
       filename: `Laporan_Absensi_${new Date().toISOString().split("T")[0]}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
+      html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] },
     };
 
     html2pdf()
@@ -500,6 +742,5 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   });
 
-  // Jalankan cek authentikasi awal
   checkAuth();
 });
