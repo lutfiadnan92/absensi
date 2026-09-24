@@ -3,8 +3,17 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Pencatatan Absensi Sederhana</title>
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Absensi">
+    <title>Sistem Pencatatan Absensi Sederhana (PWA)</title>
     
+    <!-- Dynamic Manifest & Icons -->
+    <link id="manifest-link" rel="manifest">
+    <link id="apple-touch-icon" rel="apple-touch-icon">
+    <link id="favicon-link" rel="icon" type="image/png">
+
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -90,12 +99,24 @@
           <h1 class="text-2xl font-bold">Laporan Absensi</h1>
           <p class="text-blue-100 text-sm mt-1" id="current-date">Memuat tanggal...</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap justify-center gap-2">
+          <button
+            id="install-app-btn"
+            class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+          >
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              ></path></svg>
+            Install App
+          </button>
           <button
             id="export-pdf-btn"
-            class="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+            class="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center"
           >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
@@ -105,7 +126,7 @@
           </button>
           <button
             id="logout-btn"
-            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center"
           >
             Logout
           </button>
@@ -220,7 +241,7 @@
             <button
               type="button"
               id="btn-generate-bulk"
-              class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow transition-colors"
+              class="w-full md:w-1/2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow transition-colors"
             >
               Buat Daftar Centang Kehadiran
             </button>
@@ -317,7 +338,7 @@
           </div>
 
           <!-- Table Section dengan Scroll Internal -->
-          <div class="overflow-auto max-h-[600px]">
+          <div class="overflow-auto max-h-[575px]">
             <table class="min-w-full divide-y divide-gray-200 border-collapse">
               <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>

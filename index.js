@@ -1,4 +1,175 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Function untuk membuat Ikon PWA & Web Manifest secara Dinamis via Canvas
+  function initPWAAssets() {
+    const createPwaIcon = (size) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+
+      // Background Gradient Rounded Rect
+      const grad = ctx.createLinearGradient(0, 0, size, size);
+      grad.addColorStop(0, "#2563eb");
+      grad.addColorStop(1, "#1d4ed8");
+
+      const r = size * 0.22;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(size - r, 0);
+      ctx.quadraticCurveTo(size, 0, size, r);
+      ctx.lineTo(size, size - r);
+      ctx.quadraticCurveTo(size, size, size - r, size);
+      ctx.lineTo(r, size);
+      ctx.quadraticCurveTo(0, size, 0, size - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Clipboard Board Icon Drawing
+      const pad = size * 0.22;
+      const w = size - pad * 2;
+      const h = size - pad * 2;
+
+      // White Clipboard Body
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      const br = size * 0.05;
+      ctx.roundRect(pad, pad + size * 0.06, w, h - size * 0.06, br);
+      ctx.fill();
+
+      // Top Metal Clip
+      ctx.fillStyle = "#93c5fd";
+      ctx.beginPath();
+      ctx.roundRect(pad + w * 0.25, pad, w * 0.5, size * 0.09, size * 0.02);
+      ctx.fill();
+
+      // Checklist items on board
+      const lineH = size * 0.035;
+      const startY = pad + size * 0.16;
+      const gap = size * 0.09;
+
+      for (let i = 0; i < 3; i++) {
+        // Status Box
+        ctx.fillStyle = i === 2 ? "#ef4444" : "#10b981";
+        ctx.beginPath();
+        ctx.roundRect(pad + w * 0.12, startY + i * gap, lineH * 1.5, lineH * 1.5, size * 0.01);
+        ctx.fill();
+
+        // Line text
+        ctx.fillStyle = "#94a3b8";
+        ctx.beginPath();
+        ctx.roundRect(
+          pad + w * 0.35,
+          startY + i * gap + lineH * 0.25,
+          w * 0.52,
+          lineH,
+          size * 0.01,
+        );
+        ctx.fill();
+      }
+
+      return canvas.toDataURL("image/png");
+    };
+
+    const icon192 = createPwaIcon(192);
+    const icon512 = createPwaIcon(512);
+
+    // Attach Favicon & Apple Touch Icon
+    document.getElementById("favicon-link").href = icon192;
+    document.getElementById("apple-touch-icon").href = icon192;
+
+    // Attach Web Manifest
+    const manifestData = {
+      name: "Aplikasi Absensi Sederhana",
+      short_name: "Absensi",
+      description: "Aplikasi Pencatatan Kehadiran & Laporan PDF",
+      start_url: "./",
+      display: "standalone",
+      background_color: "#f3f4f6",
+      theme_color: "#2563eb",
+      icons: [
+        {
+          src: icon192,
+          sizes: "192x192",
+          type: "image/png",
+          purpose: "any maskable",
+        },
+        {
+          src: icon512,
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "any maskable",
+        },
+      ],
+    };
+
+    const blob = new Blob([JSON.stringify(manifestData)], { type: "application/manifest+json" });
+    document.getElementById("manifest-link").href = URL.createObjectURL(blob);
+  }
+
+  // Inisialisasi Ikon & Manifest PWA
+  initPWAAssets();
+
+  // PWA Installation & Service Worker Event
+  let deferredPrompt;
+  const installAppBtn = document.getElementById("install-app-btn");
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installAppBtn) installAppBtn.classList.remove("hidden");
+  });
+
+  if (installAppBtn) {
+    installAppBtn.addEventListener("click", async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          installAppBtn.classList.add("hidden");
+        }
+        deferredPrompt = null;
+      } else {
+        Swal.fire({
+          icon: "info",
+          title: "Install Aplikasi (PWA)",
+          html: `
+                                <div class="text-left text-sm space-y-2">
+                                    <p>Untuk menginstall aplikasi ini di perangkat Anda:</p>
+                                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mt-2">
+                                        <p class="font-semibold text-blue-700">Android / Chrome:</p>
+                                        <p class="text-gray-600">Ketuk menu titik tiga <b>(⋮)</b> di pojok kanan atas, lalu pilih <b>"Tambahkan ke Layar Utama"</b> atau <b>"Install Aplikasi"</b>.</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <p class="font-semibold text-blue-700">iOS / Safari:</p>
+                                        <p class="text-gray-600">Ketuk tombol Bagikan <b>(Share)</b> di bagian bawah browser, lalu pilih <b>"Tambah ke Layar Utama"</b>.</p>
+                                    </div>
+                                </div>
+                            `,
+          confirmButtonColor: "#2563eb",
+        });
+      }
+    });
+  }
+
+  // Register Service Worker
+  if ("serviceWorker" in navigator) {
+    const swCode = `
+                    const CACHE_NAME = 'absensi-pwa-v1';
+                    self.addEventListener('install', (e) => self.skipWaiting());
+                    self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                    });
+                `;
+    try {
+      const blob = new Blob([swCode], { type: "application/javascript" });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    } catch (e) {}
+  }
+
   const defaultCredentials = { username: "admin", password: "admin123" };
   if (!localStorage.getItem("credentials_json")) {
     localStorage.setItem("credentials_json", JSON.stringify(defaultCredentials));
@@ -538,11 +709,11 @@ document.addEventListener("DOMContentLoaded", () => {
       html: `
                         <div class="text-left mb-3">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                            <input id="swal-edit-name" class="swal2-input !m-0 !w-full" value="${record.name}">
+                            <input id="swal-edit-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" value="${record.name}">
                         </div>
                         <div class="text-left mb-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran</label>
-                            <select id="swal-edit-status" class="swal2-select !m-0 !w-full">
+                            <select id="swal-edit-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
                                 <option value="Hadir" ${record.status === "Hadir" ? "selected" : ""}>Hadir</option>
                                 <option value="Tidak Hadir" ${record.status === "Tidak Hadir" ? "selected" : ""}>Tidak Hadir</option>
                                 <option value="Izin" ${record.status === "Izin" ? "selected" : ""}>Izin</option>
@@ -726,11 +897,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const opt = {
       margin: [0.5, 0.5, 0.5, 0.5],
-      filename: `Laporan_Absensi_${new Date().toISOString().split("T")[0]}.pdf`,
+      filename: `Laporan_Absensi_Kelompok_6_${new Date().toISOString().split("T")[0]}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"] },
+      pagebreak: { mode: ["css"] },
     };
 
     html2pdf()
