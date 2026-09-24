@@ -1,117 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Function untuk membuat Ikon PWA & Web Manifest secara Dinamis via Canvas
-  function initPWAAssets() {
-    const createPwaIcon = (size) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-
-      // Background Gradient Rounded Rect
-      const grad = ctx.createLinearGradient(0, 0, size, size);
-      grad.addColorStop(0, "#2563eb");
-      grad.addColorStop(1, "#1d4ed8");
-
-      const r = size * 0.22;
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(r, 0);
-      ctx.lineTo(size - r, 0);
-      ctx.quadraticCurveTo(size, 0, size, r);
-      ctx.lineTo(size, size - r);
-      ctx.quadraticCurveTo(size, size, size - r, size);
-      ctx.lineTo(r, size);
-      ctx.quadraticCurveTo(0, size, 0, size - r);
-      ctx.lineTo(0, r);
-      ctx.quadraticCurveTo(0, 0, r, 0);
-      ctx.closePath();
-      ctx.fill();
-
-      // Clipboard Board Icon Drawing
-      const pad = size * 0.22;
-      const w = size - pad * 2;
-      const h = size - pad * 2;
-
-      // White Clipboard Body
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      const br = size * 0.05;
-      ctx.roundRect(pad, pad + size * 0.06, w, h - size * 0.06, br);
-      ctx.fill();
-
-      // Top Metal Clip
-      ctx.fillStyle = "#93c5fd";
-      ctx.beginPath();
-      ctx.roundRect(pad + w * 0.25, pad, w * 0.5, size * 0.09, size * 0.02);
-      ctx.fill();
-
-      // Checklist items on board
-      const lineH = size * 0.035;
-      const startY = pad + size * 0.16;
-      const gap = size * 0.09;
-
-      for (let i = 0; i < 3; i++) {
-        // Status Box
-        ctx.fillStyle = i === 2 ? "#ef4444" : "#10b981";
-        ctx.beginPath();
-        ctx.roundRect(pad + w * 0.12, startY + i * gap, lineH * 1.5, lineH * 1.5, size * 0.01);
-        ctx.fill();
-
-        // Line text
-        ctx.fillStyle = "#94a3b8";
-        ctx.beginPath();
-        ctx.roundRect(
-          pad + w * 0.35,
-          startY + i * gap + lineH * 0.25,
-          w * 0.52,
-          lineH,
-          size * 0.01,
-        );
-        ctx.fill();
-      }
-
-      return canvas.toDataURL("image/png");
-    };
-
-    const icon192 = createPwaIcon(192);
-    const icon512 = createPwaIcon(512);
-
-    // Attach Favicon & Apple Touch Icon
-    document.getElementById("favicon-link").href = icon192;
-    document.getElementById("apple-touch-icon").href = icon192;
-
-    // Attach Web Manifest
-    const manifestData = {
-      name: "Aplikasi Absensi Sederhana",
-      short_name: "Absensi",
-      description: "Aplikasi Pencatatan Kehadiran & Laporan PDF",
-      start_url: "./",
-      display: "standalone",
-      background_color: "#f3f4f6",
-      theme_color: "#2563eb",
-      icons: [
-        {
-          src: icon192,
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "any maskable",
-        },
-        {
-          src: icon512,
-          sizes: "512x512",
-          type: "image/png",
-          purpose: "any maskable",
-        },
-      ],
-    };
-
-    const blob = new Blob([JSON.stringify(manifestData)], { type: "application/manifest+json" });
-    document.getElementById("manifest-link").href = URL.createObjectURL(blob);
-  }
-
-  // Inisialisasi Ikon & Manifest PWA
-  initPWAAssets();
-
   // PWA Installation & Service Worker Event
   let deferredPrompt;
   const installAppBtn = document.getElementById("install-app-btn");
@@ -156,18 +43,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Register Service Worker
   if ("serviceWorker" in navigator) {
-    const swCode = `
-                    const CACHE_NAME = 'absensi-pwa-v1';
-                    self.addEventListener('install', (e) => self.skipWaiting());
-                    self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-                    self.addEventListener('fetch', (e) => {
-                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-                    });
-                `;
-    try {
-      const blob = new Blob([swCode], { type: "application/javascript" });
-      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
-    } catch (e) {}
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("./sw.js")
+        .catch((err) => console.error("Service worker gagal didaftarkan:", err));
+    });
   }
 
   const defaultCredentials = { username: "admin", password: "admin123" };
