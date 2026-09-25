@@ -59,6 +59,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (localStorage.getItem("attendance_json")) {
     try {
       records = JSON.parse(localStorage.getItem("attendance_json"));
+      // Ensure backwards compatibility for older records without gender field
+      records.forEach((r) => {
+        if (!r.gender) r.gender = "Laki-laki";
+      });
     } catch (e) {
       records = [];
     }
@@ -66,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("attendance_json", JSON.stringify([]));
   }
 
-  // Set untuk menyimpan ID baris yang dicentang di tabel
+  let currentGenderFilter = "all"; // 'all', 'Laki-laki', 'Perempuan'
   let selectedIds = new Set();
 
   /* DOM Elements */
@@ -79,12 +83,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const singleForm = document.getElementById("attendance-form");
   const nameInput = document.getElementById("name");
+  const genderInput = document.getElementById("gender");
   const statusInput = document.getElementById("status");
   const tableBody = document.getElementById("table-body");
   const emptyState = document.getElementById("empty-state");
   const clearAllBtn = document.getElementById("clear-all-btn");
   const dateDisplay = document.getElementById("current-date");
   const exportPdfBtn = document.getElementById("export-pdf-btn");
+
+  // DOM Filter Tabs
+  const filterAll = document.getElementById("filter-all");
+  const filterLaki = document.getElementById("filter-laki");
+  const filterPerempuan = document.getElementById("filter-perempuan");
 
   // DOM Checkbox & Table Bulk Control
   const selectAllCheckbox = document.getElementById("select-all-checkbox");
@@ -96,10 +106,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // DOM Summary Stats
   const statTotal = document.getElementById("stat-total");
+  const statTotalGender = document.getElementById("stat-total-gender");
   const statHadir = document.getElementById("stat-hadir");
+  const statHadirGender = document.getElementById("stat-hadir-gender");
   const statTidakHadir = document.getElementById("stat-tidakhadir");
+  const statTidakHadirGender = document.getElementById("stat-tidakhadir-gender");
   const statIzin = document.getElementById("stat-izin");
+  const statIzinGender = document.getElementById("stat-izin-gender");
   const statSakit = document.getElementById("stat-sakit");
+  const statSakitGender = document.getElementById("stat-sakit-gender");
 
   // DOM Tabs & Bulk Input
   const tabSingle = document.getElementById("tab-single");
@@ -112,11 +127,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnSaveBulk = document.getElementById("btn-save-bulk");
   const btnBulkAllHadir = document.getElementById("btn-bulk-all-hadir");
   const btnBulkAllTidakHadir = document.getElementById("btn-bulk-all-tidakhadir");
+  const btnBulkAllLaki = document.getElementById("btn-bulk-all-laki");
+  const btnBulkAllPerempuan = document.getElementById("btn-bulk-all-perempuan");
 
   function createTokens(username) {
     const now = Date.now();
-    const accessTokenExp = now + 2 * 60 * 60 * 1000; // 2 Jam
-    const refreshTokenExp = now + 7 * 24 * 60 * 60 * 1000; // 7 Hari
+    const accessTokenExp = now + 2 * 60 * 60 * 1000;
+    const refreshTokenExp = now + 7 * 24 * 60 * 60 * 1000;
 
     const accessToken = btoa(JSON.stringify({ username, exp: accessTokenExp }));
     const refreshToken = btoa(JSON.stringify({ username, exp: refreshTokenExp }));
@@ -164,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const enteredUser = usernameInput.value.trim();
     const enteredPass = passwordInput.value.trim();
-
     const savedCreds = JSON.parse(localStorage.getItem("credentials_json"));
 
     if (enteredUser === savedCreds.username && enteredPass === savedCreds.password) {
@@ -245,15 +261,21 @@ document.addEventListener("DOMContentLoaded", () => {
     namesArray.forEach((name) => {
       const div = document.createElement("div");
       div.className =
-        "flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100 text-sm";
+        "flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100 text-sm gap-2";
       div.innerHTML = `
                         <span class="font-medium text-gray-800 capitalize bulk-item-name">${capitalize(name)}</span>
-                        <select class="bulk-item-status px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white outline-none">
-                            <option value="Hadir" selected>Hadir</option>
-                            <option value="Tidak Hadir">Tidak Hadir</option>
-                            <option value="Izin">Izin</option>
-                            <option value="Sakit">Sakit</option>
-                        </select>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <select class="bulk-item-gender px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-xs bg-white outline-none">
+                                <option value="Laki-laki" selected>Laki-laki</option>
+                                <option value="Perempuan">Perempuan</option>
+                            </select>
+                            <select class="bulk-item-status px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-xs bg-white outline-none">
+                                <option value="Hadir" selected>Hadir</option>
+                                <option value="Tidak Hadir">Tidak Hadir</option>
+                                <option value="Izin">Izin</option>
+                                <option value="Sakit">Sakit</option>
+                            </select>
+                        </div>
                     `;
       bulkListItems.appendChild(div);
     });
@@ -269,8 +291,17 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".bulk-item-status").forEach((s) => (s.value = "Tidak Hadir"));
   });
 
+  btnBulkAllLaki.addEventListener("click", () => {
+    document.querySelectorAll(".bulk-item-gender").forEach((g) => (g.value = "Laki-laki"));
+  });
+
+  btnBulkAllPerempuan.addEventListener("click", () => {
+    document.querySelectorAll(".bulk-item-gender").forEach((g) => (g.value = "Perempuan"));
+  });
+
   btnSaveBulk.addEventListener("click", () => {
     const itemNames = document.querySelectorAll(".bulk-item-name");
+    const itemGenders = document.querySelectorAll(".bulk-item-gender");
     const itemStatuses = document.querySelectorAll(".bulk-item-status");
 
     if (itemNames.length === 0) return;
@@ -280,6 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     itemNames.forEach((nameEl, index) => {
       const name = capitalize(nameEl.textContent.trim());
+      const gender = itemGenders[index].value;
       const status = itemStatuses[index].value;
 
       const existInRecords = records.some((r) => r.name.toLowerCase() === name.toLowerCase());
@@ -288,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (existInRecords || existInBatch) {
         if (!duplicates.includes(name)) duplicates.push(name);
       } else {
-        toSave.push({ name, status });
+        toSave.push({ name, gender, status });
       }
     });
 
@@ -306,6 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
       records.push({
         id: Date.now() + index,
         name: item.name,
+        gender: item.gender,
         status: item.status,
         time: "-",
         source: "bulk",
@@ -345,6 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
   singleForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const nameValue = capitalize(nameInput.value.trim());
+    const genderValue = genderInput.value;
     const statusValue = statusInput.value;
 
     if (!nameValue) return;
@@ -366,6 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
     records.push({
       id: Date.now(),
       name: nameValue,
+      gender: genderValue,
       status: statusValue,
       time: statusValue === "Hadir" ? timeStr : "-",
       source: "single",
@@ -388,20 +423,37 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function updateSummary() {
-    const total = records.length;
-    const hadir = records.filter((r) => r.status === "Hadir").length;
-    const tidakHadir = records.filter((r) => r.status === "Tidak Hadir").length;
-    const izin = records.filter((r) => r.status === "Izin").length;
-    const sakit = records.filter((r) => r.status === "Sakit").length;
+    const getCounts = (statusFilter = null) => {
+      const list = statusFilter ? records.filter((r) => r.status === statusFilter) : records;
+      const total = list.length;
+      const l = list.filter((r) => r.gender === "Laki-laki").length;
+      const p = list.filter((r) => r.gender === "Perempuan").length;
+      return { total, l, p };
+    };
 
-    statTotal.textContent = total;
-    statHadir.textContent = hadir;
-    statTidakHadir.textContent = tidakHadir;
-    statIzin.textContent = izin;
-    statSakit.textContent = sakit;
+    const tot = getCounts();
+    const hdr = getCounts("Hadir");
+    const thdr = getCounts("Tidak Hadir");
+    const izn = getCounts("Izin");
+    const skt = getCounts("Sakit");
+
+    statTotal.textContent = tot.total;
+    statTotalGender.textContent = `L: ${tot.l} | P: ${tot.p}`;
+
+    statHadir.textContent = hdr.total;
+    statHadirGender.textContent = `L: ${hdr.l} | P: ${hdr.p}`;
+
+    statTidakHadir.textContent = thdr.total;
+    statTidakHadirGender.textContent = `L: ${thdr.l} | P: ${thdr.p}`;
+
+    statIzin.textContent = izn.total;
+    statIzinGender.textContent = `L: ${izn.l} | P: ${izn.p}`;
+
+    statSakit.textContent = skt.total;
+    statSakitGender.textContent = `L: ${skt.l} | P: ${skt.p}`;
   }
 
-  function updateTableBulkBar() {
+  function updateTableBulkBar(filteredRecords) {
     if (selectedIds.size > 0) {
       tableBulkActionBar.classList.remove("hidden");
       selectedCountText.textContent = `${selectedIds.size} data dipilih`;
@@ -409,11 +461,10 @@ document.addEventListener("DOMContentLoaded", () => {
       tableBulkActionBar.classList.add("hidden");
     }
 
-    // Pengaturan Checkbox "Select All"
-    if (records.length > 0 && selectedIds.size === records.length) {
+    if (filteredRecords.length > 0 && selectedIds.size === filteredRecords.length) {
       selectAllCheckbox.checked = true;
       selectAllCheckbox.indeterminate = false;
-    } else if (selectedIds.size > 0 && selectedIds.size < records.length) {
+    } else if (selectedIds.size > 0 && selectedIds.size < filteredRecords.length) {
       selectAllCheckbox.checked = false;
       selectAllCheckbox.indeterminate = true;
     } else {
@@ -422,27 +473,63 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Tabs Filter Event Listeners dengan Reset Checkbox Otomatis
+  function setGenderFilter(filter) {
+    if (currentGenderFilter !== filter) {
+      selectedIds.clear(); // Reset centang checkbox saat berpindah tab gender
+    }
+    currentGenderFilter = filter;
+
+    [filterAll, filterLaki, filterPerempuan].forEach((btn) => {
+      btn.className =
+        "filter-tab-btn px-3 py-1.5 rounded-md font-medium text-gray-600 hover:text-blue-600 transition-all";
+    });
+
+    if (filter === "all") {
+      filterAll.className =
+        "filter-tab-btn px-3 py-1.5 rounded-md font-semibold text-blue-600 bg-white shadow-sm transition-all";
+    } else if (filter === "Laki-laki") {
+      filterLaki.className =
+        "filter-tab-btn px-3 py-1.5 rounded-md font-semibold text-blue-600 bg-white shadow-sm transition-all";
+    } else if (filter === "Perempuan") {
+      filterPerempuan.className =
+        "filter-tab-btn px-3 py-1.5 rounded-md font-semibold text-pink-600 bg-white shadow-sm transition-all";
+    }
+
+    renderTable();
+  }
+
+  filterAll.addEventListener("click", () => setGenderFilter("all"));
+  filterLaki.addEventListener("click", () => setGenderFilter("Laki-laki"));
+  filterPerempuan.addEventListener("click", () => setGenderFilter("Perempuan"));
+
+  function getFilteredRecords() {
+    if (currentGenderFilter === "all") return records;
+    return records.filter((r) => r.gender === currentGenderFilter);
+  }
+
   function renderTable() {
     tableBody.innerHTML = "";
     updateSummary();
 
-    // Bersihkan ID terpilih yang mungkin sudah terhapus
+    const filteredRecords = getFilteredRecords();
+
     const currentIds = new Set(records.map((r) => r.id));
     selectedIds.forEach((id) => {
       if (!currentIds.has(id)) selectedIds.delete(id);
     });
 
-    if (records.length === 0) {
+    if (filteredRecords.length === 0) {
       emptyState.classList.remove("hidden");
       clearAllBtn.classList.add("hidden");
-      updateTableBulkBar();
+      updateTableBulkBar(filteredRecords);
       return;
     }
 
     emptyState.classList.add("hidden");
     clearAllBtn.classList.remove("hidden");
 
-    records.forEach((record, index) => {
+    filteredRecords.forEach((record, index) => {
       const row = document.createElement("tr");
       const isChecked = selectedIds.has(record.id);
 
@@ -452,27 +539,33 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (record.status === "Izin") badgeClass = "bg-yellow-100 text-yellow-800";
       else if (record.status === "Sakit") badgeClass = "bg-purple-100 text-purple-800";
 
+      let genderBadge =
+        record.gender === "Perempuan"
+          ? '<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-pink-100 text-pink-800">👩 P</span>'
+          : '<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800">👨 L</span>';
+
       row.className = isChecked ? "bg-blue-50/50" : "";
 
       row.innerHTML = `
                         <td class="px-4 py-4 text-center">
                             <input type="checkbox" class="row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" data-id="${record.id}" ${isChecked ? "checked" : ""}>
                         </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 capitalize">${record.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <td class="px-3 py-4 whitespace-nowrap text-xs text-gray-500">${index + 1}</td>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 capitalize">${record.name}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-xs">${genderBadge}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-xs">
                             <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
                                 ${record.status}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.time}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <td class="px-4 py-4 whitespace-nowrap text-xs text-gray-500">${record.time}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center text-xs font-medium">
                             <div class="flex items-center justify-center space-x-2">
                                 <button onclick="editRecord(${record.id})" class="text-blue-500 hover:text-blue-700 transition-colors p-1" title="Edit Baris">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                 </button>
                                 <button onclick="deleteRecord(${record.id})" class="text-red-500 hover:text-red-700 transition-colors p-1" title="Hapus Baris">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
                             </div>
                         </td>
@@ -480,20 +573,21 @@ document.addEventListener("DOMContentLoaded", () => {
       tableBody.appendChild(row);
     });
 
-    updateTableBulkBar();
+    updateTableBulkBar(filteredRecords);
   }
 
   /* Event Listener Checkbox Centang Semua */
   selectAllCheckbox.addEventListener("change", (e) => {
+    const filtered = getFilteredRecords();
     if (e.target.checked) {
-      records.forEach((r) => selectedIds.add(r.id));
+      filtered.forEach((r) => selectedIds.add(r.id));
     } else {
-      selectedIds.clear();
+      filtered.forEach((r) => selectedIds.delete(r.id));
     }
     renderTable();
   });
 
-  /* Event Listener Checkbox Per Baris (Delegasi Event) */
+  /* Event Listener Checkbox Per Baris */
   tableBody.addEventListener("change", (e) => {
     if (e.target.classList.contains("row-checkbox")) {
       const id = Number(e.target.getAttribute("data-id"));
@@ -527,7 +621,6 @@ document.addEventListener("DOMContentLoaded", () => {
     records.forEach((record) => {
       if (selectedIds.has(record.id)) {
         record.status = newStatus;
-        // Penyesuaian Waktu:
         if (newStatus === "Hadir") {
           if (record.source === "bulk") {
             record.time = "-";
@@ -591,6 +684,13 @@ document.addEventListener("DOMContentLoaded", () => {
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
                             <input id="swal-edit-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" value="${record.name}">
                         </div>
+                        <div class="text-left mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
+                            <select id="swal-edit-gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
+                                <option value="Laki-laki" ${record.gender === "Laki-laki" ? "selected" : ""}>Laki-laki</option>
+                                <option value="Perempuan" ${record.gender === "Perempuan" ? "selected" : ""}>Perempuan</option>
+                            </select>
+                        </div>
                         <div class="text-left mb-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran</label>
                             <select id="swal-edit-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
@@ -608,6 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
       confirmButtonColor: "#2563eb",
       preConfirm: () => {
         const newName = capitalize(document.getElementById("swal-edit-name").value.trim());
+        const newGender = document.getElementById("swal-edit-gender").value;
         const newStatus = document.getElementById("swal-edit-status").value;
 
         if (!newName) {
@@ -623,12 +724,13 @@ document.addEventListener("DOMContentLoaded", () => {
           return false;
         }
 
-        return { newName, newStatus };
+        return { newName, newGender, newStatus };
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        const { newName, newStatus } = result.value;
+        const { newName, newGender, newStatus } = result.value;
         record.name = newName;
+        record.gender = newGender;
 
         if (newStatus === "Hadir") {
           if (record.source === "bulk") {
@@ -700,7 +802,99 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* Export PDF */
+  /* Core Function Generatating PDF Single File */
+  function generatePdf(dataset, titleCategory = "") {
+    if (dataset.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "Data Kosong",
+        text: `Tidak ada data absensi ${titleCategory} untuk dicetak!`,
+        confirmButtonColor: "#2563eb",
+      });
+      return Promise.reject("Data kosong");
+    }
+
+    const jenisSambungInput = document.getElementById("jenis-sambung").value.trim();
+    const jenisSambung = jenisSambungInput ? jenisSambungInput : "Reguler";
+    const pdfDate = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const hadir = dataset.filter((r) => r.status === "Hadir").length;
+    const tidakHadir = dataset.filter((r) => r.status === "Tidak Hadir").length;
+    const izin = dataset.filter((r) => r.status === "Izin").length;
+    const sakit = dataset.filter((r) => r.status === "Sakit").length;
+
+    let tableRows = "";
+    dataset.forEach((record, index) => {
+      tableRows += `
+                        <tr style="page-break-inside: avoid !important; break-inside: avoid !important;">
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${index + 1}</td>
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-transform: capitalize;">${record.name}</td>
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.gender || "Laki-laki"}</td>
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.status}</td>
+                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.time}</td>
+                        </tr>
+                    `;
+    });
+
+    const titleFull = `Absensi ${jenisSambung} ${titleCategory ? "(" + titleCategory + ")" : ""}`;
+
+    const pdfContent = `
+                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #000; background-color: #fff;">
+                        <style>
+                            table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+                            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+                            thead { display: table-header-group; }
+                        </style>
+                        <h2 style="text-align: center; margin-bottom: 5px; font-size: 18px; font-weight: bold; text-transform: uppercase;">
+                            ${titleFull}
+                        </h2>
+                        <p style="text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 13px; color: #444;">
+                            Tanggal: ${pdfDate}
+                        </p>
+                        
+                        <div style="margin-bottom: 15px; font-size: 12px; border: 1px solid #ccc; padding: 8px; background-color: #f9f9f9; display: flex; justify-content: space-around;">
+                            <span><b>Total:</b> ${dataset.length}</span>
+                            <span><b>Hadir:</b> ${hadir}</span>
+                            <span><b>Tidak Hadir:</b> ${tidakHadir}</span>
+                            <span><b>Izin:</b> ${izin}</span>
+                            <span><b>Sakit:</b> ${sakit}</span>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr style="background-color: #f2f2f2; page-break-inside: avoid !important; break-inside: avoid !important;">
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 6%;">No</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 44%;">Nama</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 18%;">Gender</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 18%;">Status</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 14%;">Waktu</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+    const fileSuffix = titleCategory ? `_${titleCategory.replace(/\s+/g, "_")}` : "";
+    const opt = {
+      margin: [0.5, 0.5, 0.5, 0.5],
+      filename: `Laporan_Absensi${fileSuffix}_Kelompok_6_${new Date().toISOString().split("T")[0]}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css"] },
+    };
+
+    return html2pdf().set(opt).from(pdfContent).save();
+  }
+
+  /* Export PDF Button Trigger Pop-up Option */
   exportPdfBtn.addEventListener("click", () => {
     if (records.length === 0) {
       Swal.fire({
@@ -712,85 +906,65 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const jenisSambungInput = document.getElementById("jenis-sambung").value.trim();
-    const jenisSambung = jenisSambungInput ? jenisSambungInput : "Reguler";
-    const pdfDate = new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
+    Swal.fire({
+      title: "Pilih Format Laporan PDF",
+      text: "Silakan pilih data yang ingin diexport ke PDF:",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Export PDF",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#2563eb",
+      input: "select",
+      inputOptions: {
+        all: "Semua Data (Gabungan L & P)",
+        laki: "Khusus Laki-laki",
+        perempuan: "Khusus Perempuan",
+        both_separate: "Dua File Terpisah (1 File L & 1 File P)",
+      },
+      inputValue: "all",
+      customClass: {
+        input:
+          "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white",
+      },
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const choice = result.value;
+
+        if (choice === "all") {
+          generatePdf(records, "Gabungan");
+        } else if (choice === "laki") {
+          const dataL = records.filter((r) => r.gender === "Laki-laki");
+          generatePdf(dataL, "Laki-laki");
+        } else if (choice === "perempuan") {
+          const dataP = records.filter((r) => r.gender === "Perempuan");
+          generatePdf(dataP, "Perempuan");
+        } else if (choice === "both_separate") {
+          const dataL = records.filter((r) => r.gender === "Laki-laki");
+          const dataP = records.filter((r) => r.gender === "Perempuan");
+
+          Swal.fire({
+            title: "Memproses Export PDF...",
+            text: "Mohon tunggu sebentar, sedang menyiapkan 2 file PDF.",
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
+          });
+
+          generatePdf(dataL, "Laki-laki")
+            .then(() => {
+              setTimeout(() => {
+                generatePdf(dataP, "Perempuan")
+                  .then(() => {
+                    Swal.fire("Selesai!", "Kedua file PDF berhasil diunduh.", "success");
+                  })
+                  .catch(() => Swal.close());
+              }, 1000);
+            })
+            .catch(() => Swal.close());
+        }
+      }
     });
-
-    const hadir = records.filter((r) => r.status === "Hadir").length;
-    const tidakHadir = records.filter((r) => r.status === "Tidak Hadir").length;
-    const izin = records.filter((r) => r.status === "Izin").length;
-    const sakit = records.filter((r) => r.status === "Sakit").length;
-
-    let tableRows = "";
-    records.forEach((record, index) => {
-      tableRows += `
-                        <tr style="page-break-inside: avoid !important; break-inside: avoid !important;">
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${index + 1}</td>
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-transform: capitalize;">${record.name}</td>
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.status}</td>
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.time}</td>
-                        </tr>
-                    `;
-    });
-
-    const pdfContent = `
-                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #000; background-color: #fff;">
-                        <style>
-                            table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-                            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-                            thead { display: table-header-group; }
-                        </style>
-                        <h2 style="text-align: center; margin-bottom: 5px; font-size: 20px; font-weight: bold; text-transform: uppercase;">
-                            Absensi ${jenisSambung}
-                        </h2>
-                        <p style="text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 14px; color: #444;">
-                            ${pdfDate}
-                        </p>
-                        
-                        <div style="margin-bottom: 15px; font-size: 12px; border: 1px solid #ccc; padding: 8px; background-color: #f9f9f9; display: flex; justify-content: space-around;">
-                            <span><b>Total:</b> ${records.length}</span>
-                            <span><b>Hadir:</b> ${hadir}</span>
-                            <span><b>Tidak Hadir:</b> ${tidakHadir}</span>
-                            <span><b>Izin:</b> ${izin}</span>
-                            <span><b>Sakit:</b> ${sakit}</span>
-                        </div>
-
-                        <table>
-                            <thead>
-                                <tr style="background-color: #f2f2f2; page-break-inside: avoid !important; break-inside: avoid !important;">
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 8%;">No</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 48%;">Nama</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 24%;">Status</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 20%;">Waktu</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tableRows}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-
-    const opt = {
-      margin: [0.5, 0.5, 0.5, 0.5],
-      filename: `Laporan_Absensi_Kelompok_6_${new Date().toISOString().split("T")[0]}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css"] },
-    };
-
-    html2pdf()
-      .set(opt)
-      .from(pdfContent)
-      .save()
-      .catch((err) => {
-        console.error("Gagal export PDF:", err);
-      });
   });
 
   checkAuth();
