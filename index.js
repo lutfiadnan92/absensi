@@ -23,18 +23,18 @@ document.addEventListener("DOMContentLoaded", () => {
           icon: "info",
           title: "Install Aplikasi (PWA)",
           html: `
-                                <div class="text-left text-sm space-y-2">
-                                    <p>Untuk menginstall aplikasi ini di perangkat Anda:</p>
-                                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mt-2">
-                                        <p class="font-semibold text-blue-700">Android / Chrome:</p>
-                                        <p class="text-gray-600">Ketuk menu titik tiga <b>(⋮)</b> di pojok kanan atas, lalu pilih <b>"Tambahkan ke Layar Utama"</b> atau <b>"Install Aplikasi"</b>.</p>
-                                    </div>
-                                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                        <p class="font-semibold text-blue-700">iOS / Safari:</p>
-                                        <p class="text-gray-600">Ketuk tombol Bagikan <b>(Share)</b> di bagian bawah browser, lalu pilih <b>"Tambah ke Layar Utama"</b>.</p>
-                                    </div>
-                                </div>
-                            `,
+            <div class="text-left text-sm space-y-2">
+              <p>Untuk menginstall aplikasi ini di perangkat Anda:</p>
+              <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mt-2">
+                <p class="font-semibold text-blue-700">Android / Chrome:</p>
+                <p class="text-gray-600">Ketuk menu titik tiga <b>(⋮)</b> di pojok kanan atas, lalu pilih <b>"Tambahkan ke Layar Utama"</b> atau <b>"Install Aplikasi"</b>.</p>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <p class="font-semibold text-blue-700">iOS / Safari:</p>
+                <p class="text-gray-600">Ketuk tombol Bagikan <b>(Share)</b> di bagian bawah browser, lalu pilih <b>"Tambah ke Layar Utama"</b>.</p>
+              </div>
+            </div>
+          `,
           confirmButtonColor: "#2563eb",
         });
       }
@@ -263,20 +263,24 @@ document.addEventListener("DOMContentLoaded", () => {
       div.className =
         "flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100 text-sm gap-2";
       div.innerHTML = `
-                        <span class="font-medium text-gray-800 capitalize bulk-item-name">${capitalize(name)}</span>
-                        <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <select class="bulk-item-gender px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-xs bg-white outline-none">
-                                <option value="Laki-laki" selected>Laki-laki</option>
-                                <option value="Perempuan">Perempuan</option>
-                            </select>
-                            <select class="bulk-item-status px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-xs bg-white outline-none">
-                                <option value="Hadir" selected>Hadir</option>
-                                <option value="Tidak Hadir">Tidak Hadir</option>
-                                <option value="Izin">Izin</option>
-                                <option value="Sakit">Sakit</option>
-                            </select>
-                        </div>
-                    `;
+        <span class="font-medium text-gray-800 capitalize bulk-item-name">${capitalize(name)}</span>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select
+              class="bulk-item-gender px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-xs bg-white outline-none"
+            >
+              <option value="Laki-laki" selected>Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
+            <select
+              class="bulk-item-status px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-xs bg-white outline-none"
+            >
+              <option value="Hadir" selected>Hadir</option>
+              <option value="Tidak Hadir">Tidak Hadir</option>
+              <option value="Izin">Izin</option>
+              <option value="Sakit">Sakit</option>
+            </select>
+          </div>
+      `;
       bulkListItems.appendChild(div);
     });
 
@@ -547,29 +551,52 @@ document.addEventListener("DOMContentLoaded", () => {
       row.className = isChecked ? "bg-blue-50/50" : "";
 
       row.innerHTML = `
-                        <td class="px-4 py-4 text-center">
-                            <input type="checkbox" class="row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" data-id="${record.id}" ${isChecked ? "checked" : ""}>
-                        </td>
-                        <td class="px-3 py-4 whitespace-nowrap text-xs text-gray-500">${index + 1}</td>
-                        <td class="px-5 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 capitalize">${record.name}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-xs">${genderBadge}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-xs">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
-                                ${record.status}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-xs text-gray-500">${record.time}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center text-xs font-medium">
-                            <div class="flex items-center justify-center space-x-2">
-                                <button onclick="editRecord(${record.id})" class="text-blue-500 hover:text-blue-700 transition-colors p-1" title="Edit Baris">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                </button>
-                                <button onclick="deleteRecord(${record.id})" class="text-red-500 hover:text-red-700 transition-colors p-1" title="Hapus Baris">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                            </div>
-                        </td>
-                    `;
+        <td class="px-4 py-4 text-center">
+          <input
+            type="checkbox"
+            class="row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+            data-id="${record.id}"
+            ${isChecked ? "checked" : ""}
+          >
+        </td>
+        <td class="px-3 py-4 whitespace-nowrap text-xs text-gray-500">${index + 1}</td>
+        <td class="px-5 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 capitalize">${record.name}</td>
+        <td class="px-4 py-4 whitespace-nowrap text-xs">${genderBadge}</td>
+        <td class="px-4 py-4 whitespace-nowrap text-xs">
+          <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+            ${record.status}
+          </span>
+        </td>
+        <td class="px-4 py-4 whitespace-nowrap text-xs text-gray-500">${record.time}</td>
+        <td class="px-4 py-4 whitespace-nowrap text-center text-xs font-medium">
+          <div class="flex items-center justify-center space-x-2">
+            <button
+              onclick="editRecord(${record.id})"
+              class="text-blue-500 hover:text-blue-700 transition-colors p-1"
+              title="Edit Baris"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                ></path></svg>
+            </button>
+            <button
+              onclick="deleteRecord(${record.id})"
+              class="text-red-500 hover:text-red-700 transition-colors p-1"
+              title="Hapus Baris"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                ></path></svg>
+            </button>
+          </div>
+        </td>
+      `;
       tableBody.appendChild(row);
     });
 
@@ -680,27 +707,37 @@ document.addEventListener("DOMContentLoaded", () => {
     Swal.fire({
       title: "Edit Data Kehadiran",
       html: `
-                        <div class="text-left mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                            <input id="swal-edit-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" value="${record.name}">
-                        </div>
-                        <div class="text-left mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
-                            <select id="swal-edit-gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
-                                <option value="Laki-laki" ${record.gender === "Laki-laki" ? "selected" : ""}>Laki-laki</option>
-                                <option value="Perempuan" ${record.gender === "Perempuan" ? "selected" : ""}>Perempuan</option>
-                            </select>
-                        </div>
-                        <div class="text-left mb-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran</label>
-                            <select id="swal-edit-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
-                                <option value="Hadir" ${record.status === "Hadir" ? "selected" : ""}>Hadir</option>
-                                <option value="Tidak Hadir" ${record.status === "Tidak Hadir" ? "selected" : ""}>Tidak Hadir</option>
-                                <option value="Izin" ${record.status === "Izin" ? "selected" : ""}>Izin</option>
-                                <option value="Sakit" ${record.status === "Sakit" ? "selected" : ""}>Sakit</option>
-                            </select>
-                        </div>
-                    `,
+          <div class="text-left mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+            <input
+              id="swal-edit-name"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              value="${record.name}"
+            >
+          </div>
+          <div class="text-left mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
+            <select
+              id="swal-edit-gender"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+            >
+              <option value="Laki-laki" ${record.gender === "Laki-laki" ? "selected" : ""}>Laki-laki</option>
+              <option value="Perempuan" ${record.gender === "Perempuan" ? "selected" : ""}>Perempuan</option>
+            </select>
+          </div>
+          <div class="text-left mb-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran</label>
+            <select
+              id="swal-edit-status"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+            >
+              <option value="Hadir" ${record.status === "Hadir" ? "selected" : ""}>Hadir</option>
+              <option value="Tidak Hadir" ${record.status === "Tidak Hadir" ? "selected" : ""}>Tidak Hadir</option>
+              <option value="Izin" ${record.status === "Izin" ? "selected" : ""}>Izin</option>
+              <option value="Sakit" ${record.status === "Sakit" ? "selected" : ""}>Sakit</option>
+            </select>
+          </div>
+      `,
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: "Simpan",
@@ -830,56 +867,74 @@ document.addEventListener("DOMContentLoaded", () => {
     let tableRows = "";
     dataset.forEach((record, index) => {
       tableRows += `
-                        <tr style="page-break-inside: avoid !important; break-inside: avoid !important;">
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${index + 1}</td>
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-transform: capitalize;">${record.name}</td>
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.gender || "Laki-laki"}</td>
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.status}</td>
-                            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.time}</td>
-                        </tr>
-                    `;
+          <tr style="page-break-inside: avoid !important; break-inside: avoid !important;">
+            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${index + 1}</td>
+            <td style="border: 1px solid #000; padding: 6px 8px; text-transform: capitalize;">${record.name}</td>
+            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.status}</td>
+            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.time}</td>
+          </tr>
+      `;
     });
 
     const titleFull = `Absensi ${jenisSambung} ${titleCategory ? "(" + titleCategory + ")" : ""}`;
 
     const pdfContent = `
-                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #000; background-color: #fff;">
-                        <style>
-                            table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-                            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-                            thead { display: table-header-group; }
-                        </style>
-                        <h2 style="text-align: center; margin-bottom: 5px; font-size: 18px; font-weight: bold; text-transform: uppercase;">
-                            ${titleFull}
-                        </h2>
-                        <p style="text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 13px; color: #444;">
-                            Tanggal: ${pdfDate}
-                        </p>
-                        
-                        <div style="margin-bottom: 15px; font-size: 12px; border: 1px solid #ccc; padding: 8px; background-color: #f9f9f9; display: flex; justify-content: space-around;">
-                            <span><b>Total:</b> ${dataset.length}</span>
-                            <span><b>Hadir:</b> ${hadir}</span>
-                            <span><b>Tidak Hadir:</b> ${tidakHadir}</span>
-                            <span><b>Izin:</b> ${izin}</span>
-                            <span><b>Sakit:</b> ${sakit}</span>
-                        </div>
+      <div
+        style="font-family: Arial, sans-serif; padding: 20px; color: #000; background-color: #fff;"
+      >
+        <style>
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          thead {
+            display: table-header-group;
+          }
+        </style>
+        <h2
+          style="text-align: center; margin-bottom: 5px; font-size: 18px; font-weight: bold; text-transform: uppercase;"
+        >
+          ${titleFull}
+        </h2>
+        <p
+          style="text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 13px; color: #444;"
+        >
+          Tanggal: ${pdfDate}
+        </p>
+            
+        <div
+          style="margin-bottom: 15px; font-size: 12px; border: 1px solid #ccc; padding: 8px; background-color: #f9f9f9; display: flex; justify-content: space-around;"
+        >
+          <span><b>Total:</b> ${dataset.length}</span>
+          <span><b>Hadir:</b> ${hadir}</span>
+          <span><b>Tidak Hadir:</b> ${tidakHadir}</span>
+          <span><b>Izin:</b> ${izin}</span>
+          <span><b>Sakit:</b> ${sakit}</span>
+        </div>
 
-                        <table>
-                            <thead>
-                                <tr style="background-color: #f2f2f2; page-break-inside: avoid !important; break-inside: avoid !important;">
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 6%;">No</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 44%;">Nama</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 18%;">Gender</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 18%;">Status</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 14%;">Waktu</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tableRows}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+        <table>
+          <thead>
+            <tr
+              style="background-color: #f2f2f2; page-break-inside: avoid !important; break-inside: avoid !important;"
+            >
+              <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 6%;">No</th>
+              <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 44%;">Nama</th>
+              <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 18%;">Status</th>
+              <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 14%;">Waktu</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+    `;
 
     const fileSuffix = titleCategory ? `_${titleCategory.replace(/\s+/g, "_")}` : "";
     const opt = {
