@@ -290,12 +290,12 @@
         </div>
 
         <!-- Wrapper Utama Card Tabel & Panel Aksi Massal -->
-        <div class="rounded-xl border border-gray-200 shadow-sm bg-white overflow-hidden relative">
+        <div class="rounded-xl border border-gray-200 shadow-sm bg-white overflow-visible relative">
                 
           <!-- Panel Aksi Massal untuk Data Dicentang di Tabel -->
           <div
             id="table-bulk-action-bar"
-            class="hidden p-3.5 bg-blue-50 border-b border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all"
+            class="hidden sticky top-0 z-20 p-3.5 bg-blue-50 border-b border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all"
           >
             <div class="flex items-center gap-2">
               <span id="selected-count-text" class="text-sm font-bold text-blue-800">0 data dipilih</span>
@@ -338,7 +338,7 @@
           </div>
 
           <!-- Table Section dengan Scroll Internal -->
-          <div class="overflow-auto max-h-[575px]">
+          <div class="overflow-auto max-h-[700px]">
             <table class="min-w-full divide-y divide-gray-200 border-collapse">
               <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
