@@ -59,7 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (localStorage.getItem("attendance_json")) {
     try {
       records = JSON.parse(localStorage.getItem("attendance_json"));
-      // Ensure backwards compatibility for older records without gender field
       records.forEach((r) => {
         if (!r.gender) r.gender = "Laki-laki";
       });
@@ -116,10 +115,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const statSakit = document.getElementById("stat-sakit");
   const statSakitGender = document.getElementById("stat-sakit-gender");
 
-  // DOM Tabs & Bulk Input
+  // DOM Tabs & Containers
   const tabSingle = document.getElementById("tab-single");
   const tabBulk = document.getElementById("tab-bulk");
+  const tabMateri = document.getElementById("tab-materi");
   const bulkContainer = document.getElementById("bulk-attendance-container");
+  const materiContainer = document.getElementById("materi-container");
+
+  // DOM Bulk Input
   const bulkNames = document.getElementById("bulk-names");
   const btnGenerateBulk = document.getElementById("btn-generate-bulk");
   const bulkChecklistWrapper = document.getElementById("bulk-checklist-wrapper");
@@ -129,6 +132,47 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnBulkAllTidakHadir = document.getElementById("btn-bulk-all-tidakhadir");
   const btnBulkAllLaki = document.getElementById("btn-bulk-all-laki");
   const btnBulkAllPerempuan = document.getElementById("btn-bulk-all-perempuan");
+
+  // DOM Materi Input
+  const materiQuran = document.getElementById("materi-quran");
+  const materiHadits = document.getElementById("materi-hadits");
+  const materiNasehat = document.getElementById("materi-nasehat");
+  const btnSaveMateri = document.getElementById("btn-save-materi");
+
+  // Load Materi dari localStorage
+  function loadMateri() {
+    const savedMateri = localStorage.getItem("materi_json");
+    if (savedMateri) {
+      try {
+        const data = JSON.parse(savedMateri);
+        if (data.quran) materiQuran.value = data.quran;
+        if (data.hadits) materiHadits.value = data.hadits;
+        if (data.nasehat) materiNasehat.value = data.nasehat;
+      } catch (e) {}
+    }
+  }
+
+  loadMateri();
+
+  // Simpan Materi ke localStorage
+  btnSaveMateri.addEventListener("click", () => {
+    const materiData = {
+      quran: materiQuran.value.trim(),
+      hadits: materiHadits.value.trim(),
+      nasehat: materiNasehat.value.trim(),
+    };
+
+    localStorage.setItem("materi_json", JSON.stringify(materiData));
+
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: "success",
+      title: "Data materi berhasil disimpan!",
+      showConfirmButton: false,
+      timer: 1500,
+    });
+  });
 
   function createTokens(username) {
     const now = Date.now();
@@ -221,23 +265,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  tabSingle.addEventListener("click", () => {
-    singleForm.classList.remove("hidden");
-    bulkContainer.classList.add("hidden");
-    tabSingle.className =
-      "font-semibold text-blue-600 border-b-2 border-blue-600 pb-2 text-sm focus:outline-none transition-all";
-    tabBulk.className =
-      "font-semibold text-gray-500 hover:text-blue-600 pb-2 text-sm focus:outline-none transition-all";
-  });
-
-  tabBulk.addEventListener("click", () => {
+  // Tab Switching Handler
+  function setActiveTab(tabType) {
     singleForm.classList.add("hidden");
-    bulkContainer.classList.remove("hidden");
-    tabBulk.className =
-      "font-semibold text-blue-600 border-b-2 border-blue-600 pb-2 text-sm focus:outline-none transition-all";
-    tabSingle.className =
-      "font-semibold text-gray-500 hover:text-blue-600 pb-2 text-sm focus:outline-none transition-all";
-  });
+    bulkContainer.classList.add("hidden");
+    materiContainer.classList.add("hidden");
+
+    const inactiveTabClass =
+      "font-semibold text-gray-500 hover:text-blue-600 pb-2 text-sm focus:outline-none transition-all whitespace-nowrap";
+    const activeTabClass =
+      "font-semibold text-blue-600 border-b-2 border-blue-600 pb-2 text-sm focus:outline-none transition-all whitespace-nowrap";
+
+    tabSingle.className = inactiveTabClass;
+    tabBulk.className = inactiveTabClass;
+    tabMateri.className = inactiveTabClass + " flex items-center gap-1.5";
+
+    if (tabType === "single") {
+      singleForm.classList.remove("hidden");
+      tabSingle.className = activeTabClass;
+    } else if (tabType === "bulk") {
+      bulkContainer.classList.remove("hidden");
+      tabBulk.className = activeTabClass;
+    } else if (tabType === "materi") {
+      materiContainer.classList.remove("hidden");
+      tabMateri.className = activeTabClass + " flex items-center gap-1.5";
+    }
+  }
+
+  tabSingle.addEventListener("click", () => setActiveTab("single"));
+  tabBulk.addEventListener("click", () => setActiveTab("bulk"));
+  tabMateri.addEventListener("click", () => setActiveTab("materi"));
 
   btnGenerateBulk.addEventListener("click", () => {
     const text = bulkNames.value.trim();
@@ -477,10 +534,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Tabs Filter Event Listeners dengan Reset Checkbox Otomatis
   function setGenderFilter(filter) {
     if (currentGenderFilter !== filter) {
-      selectedIds.clear(); // Reset centang checkbox saat berpindah tab gender
+      selectedIds.clear();
     }
     currentGenderFilter = filter;
 
@@ -545,8 +601,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let genderBadge =
         record.gender === "Perempuan"
-          ? '<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-pink-100 text-pink-800">👩 P</span>'
-          : '<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800">👨 L</span>';
+          ? '<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-pink-100 text-pink-800">P</span>'
+          : '<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800">L</span>';
 
       row.className = isChecked ? "bg-blue-50/50" : "";
 
@@ -603,7 +659,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateTableBulkBar(filteredRecords);
   }
 
-  /* Event Listener Checkbox Centang Semua */
   selectAllCheckbox.addEventListener("change", (e) => {
     const filtered = getFilteredRecords();
     if (e.target.checked) {
@@ -614,7 +669,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTable();
   });
 
-  /* Event Listener Checkbox Per Baris */
   tableBody.addEventListener("change", (e) => {
     if (e.target.classList.contains("row-checkbox")) {
       const id = Number(e.target.getAttribute("data-id"));
@@ -627,7 +681,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  /* Aksi Massal Status Kehadiran dari Tabel */
   btnApplyTableBulkStatus.addEventListener("click", () => {
     const newStatus = tableBulkStatusSelect.value;
     if (!newStatus) {
@@ -675,7 +728,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* Aksi Massal Hapus Terpilih dari Tabel */
   btnDeleteTableBulk.addEventListener("click", () => {
     if (selectedIds.size === 0) return;
 
@@ -699,7 +751,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* Edit Baris Satuan */
   window.editRecord = function (id) {
     const record = records.find((r) => r.id === id);
     if (!record) return;
@@ -839,7 +890,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* Core Function Generatating PDF Single File */
+  /* Core Function Generating PDF Single File */
   function generatePdf(dataset, titleCategory = "") {
     if (dataset.length === 0) {
       Swal.fire({
@@ -864,19 +915,53 @@ document.addEventListener("DOMContentLoaded", () => {
     const izin = dataset.filter((r) => r.status === "Izin").length;
     const sakit = dataset.filter((r) => r.status === "Sakit").length;
 
+    // Ambil Data Materi
+    const quranVal = materiQuran.value.trim();
+    const haditsVal = materiHadits.value.trim();
+    const nasehatVal = materiNasehat.value.trim();
+
+    let materiHtmlSection = "";
+
+    if (quranVal || haditsVal || nasehatVal) {
+      materiHtmlSection = `
+        <div
+          style="margin-bottom: 12px; font-size: 12px; border: 1px solid #2563eb; background-color: #eff6ff; padding: 10px; border-radius: 6px;"
+        >
+          <div
+            style="font-weight: bold; font-size: 13px; color: #1e40af; border-bottom: 1px solid #bfdbfe; padding-bottom: 4px; margin-bottom: 6px; text-transform: uppercase;"
+          >
+            📖 Materi Pembelajaran / Acara
+          </div>
+          ${quranVal
+            ? `<div style="margin-bottom: 3px;"><b>Al-Qur'an:</b> <span class="capitalize">${quranVal}</span></div>`
+            : ""
+          }
+          ${haditsVal
+            ? `<div style="margin-bottom: 3px;"><b>Al-Hadits:</b> <span class="capitalize">${haditsVal}</span></div>`
+            : ""
+          }
+          ${nasehatVal
+            ? `<div><b>Nasehat Agama:</b> <span class="capitalize">${nasehatVal}</span></div>`
+            : ""
+          }
+        </div>
+      `;
+    }
+
     let tableRows = "";
+
     dataset.forEach((record, index) => {
       tableRows += `
-          <tr style="page-break-inside: avoid !important; break-inside: avoid !important;">
-            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${index + 1}</td>
-            <td style="border: 1px solid #000; padding: 6px 8px; text-transform: capitalize;">${record.name}</td>
-            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.status}</td>
-            <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.time}</td>
-          </tr>
+        <tr style="page-break-inside: avoid !important; break-inside: avoid !important;">
+          <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${index + 1}</td>
+          <td style="border: 1px solid #000; padding: 6px 8px; text-transform: capitalize;">${record.name}</td>
+          <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.status}</td>
+          <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${record.time}</td>
+        </tr>
       `;
     });
 
-    const titleFull = `Absensi ${jenisSambung} ${titleCategory ? "(" + titleCategory + ")" : ""}`;
+    const titleFull = `Laporan Absensi ${jenisSambung} ${titleCategory ? "(" + titleCategory + ")" : ""}`;
 
     const pdfContent = `
       <div
@@ -907,7 +992,9 @@ document.addEventListener("DOMContentLoaded", () => {
         >
           Tanggal: ${pdfDate}
         </p>
-            
+                          
+        ${materiHtmlSection}
+
         <div
           style="margin-bottom: 15px; font-size: 12px; border: 1px solid #ccc; padding: 8px; background-color: #f9f9f9; display: flex; justify-content: space-around;"
         >
@@ -949,7 +1036,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return html2pdf().set(opt).from(pdfContent).save();
   }
 
-  /* Export PDF Button Trigger Pop-up Option */
   exportPdfBtn.addEventListener("click", () => {
     if (records.length === 0) {
       Swal.fire({
