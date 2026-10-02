@@ -37,6 +37,10 @@ window.absensiExportMethods = {
         showCancelButton: true,
         confirmButtonText: "Download PDF",
         confirmButtonColor: "#2563eb",
+        customClass: {
+          input:
+            "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white",
+        },
       });
       if (!result.isConfirmed) return;
 
@@ -109,6 +113,7 @@ window.absensiExportMethods = {
       const tidakHadir = dataset.filter((r) => r.status === "Tidak Hadir").length;
       const izin = dataset.filter((r) => r.status === "Izin").length;
       const sakit = dataset.filter((r) => r.status === "Sakit").length;
+      const percentage = (count) => Math.round((count / dataset.length) * 100);
 
       let materiHtml = "";
       if (this.materi.quran || this.materi.hadits || this.materi.nasehat) {
@@ -121,9 +126,18 @@ window.absensiExportMethods = {
             >
               MATERI PEMBELAJARAN
             </div>
-            ${this.materi.quran ? `<div><b>Al-Qur'an:</b> ${this.materi.quran}</div>` : ""}
-            ${this.materi.hadits ? `<div><b>Al-Hadits:</b> ${this.materi.hadits}</div>` : ""}
-            ${this.materi.nasehat ? `<div><b>Nasehat Agama:</b> ${this.materi.nasehat}</div>` : ""}
+            ${this.materi.quran
+              ? `<div><b>Al-Qur'an:</b> <span class="capitalize">${this.materi.quran}</span></div>`
+              : ""
+            }
+            ${this.materi.hadits
+              ? `<div><b>Al-Hadits:</b> <span class="capitalize">${this.materi.hadits}</span></div>`
+              : ""
+            }
+            ${this.materi.nasehat
+              ? `<div><b>Nasehat Agama:</b> <span class="capitalize">${this.materi.nasehat}</span></div>`
+              : ""
+            }
           </div>
         `;
       }
@@ -161,10 +175,10 @@ window.absensiExportMethods = {
             style="margin-bottom: 12px; font-size: 12px; border: 1px solid #ccc; padding: 6px; background-color: #f9f9f9; display: flex; justify-content: space-around;"
           >
             <span><b>Total:</b> ${dataset.length}</span>
-            <span><b>Hadir:</b> ${hadir}</span>
-            <span><b>Tidak Hadir:</b> ${tidakHadir}</span>
-            <span><b>Izin:</b> ${izin}</span>
-            <span><b>Sakit:</b> ${sakit}</span>
+            <span><b>Hadir:</b> ${hadir} (${percentage(hadir)}%)</span>
+            <span><b>Tidak Hadir:</b> ${tidakHadir} (${percentage(tidakHadir)}%)</span>
+            <span><b>Izin:</b> ${izin} (${percentage(izin)}%)</span>
+            <span><b>Sakit:</b> ${sakit} (${percentage(sakit)}%)</span>
           </div>
           <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
             <thead>

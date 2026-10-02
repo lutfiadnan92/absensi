@@ -307,21 +307,26 @@ function absensiApp() {
       const thdr = calc("Tidak Hadir");
       const izn = calc("Izin");
       const skt = calc("Sakit");
+      const percentage = (count) => (tot.total ? Math.round((count / tot.total) * 100) : 0);
 
       return {
         total: tot.total,
         totalL: tot.l,
         totalP: tot.p,
         hadir: hdr.total,
+        hadirPercent: percentage(hdr.total),
         hadirL: hdr.l,
         hadirP: hdr.p,
         tidakHadir: thdr.total,
+        tidakHadirPercent: percentage(thdr.total),
         tidakHadirL: thdr.l,
         tidakHadirP: thdr.p,
         izin: izn.total,
+        izinPercent: percentage(izn.total),
         izinL: izn.l,
         izinP: izn.p,
         sakit: skt.total,
+        sakitPercent: percentage(skt.total),
         sakitL: skt.l,
         sakitP: skt.p,
       };
