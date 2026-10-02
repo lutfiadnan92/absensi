@@ -7,231 +7,420 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-title" content="Absensi">
-    <title>Sistem Pencatatan Absensi Sederhana (PWA)</title>
-    
-    <!-- Dynamic Manifest & Icons -->
+    <title>Sistem Pencatatan Absensi</title>
+    <!-- Dynamic PWA Links -->
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" href="./icon/icon-192.png">
     <link rel="icon" type="image/png" href="./icon/icon-192.png">
-
-    <!-- Load Tailwind CSS -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Load html2pdf for PDF Export -->
+    <!-- Supabase JS Client v2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- html2pdf.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
-    <!-- Load SweetAlert2 -->
+    <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    <!-- Load Google Fonts -->
+    <!-- Google Fonts Inter -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     >
+    <!-- Alpine.js v3 CDN (defer loaded) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="./style.css">
   </head>
-  <body class="antialiased text-gray-800 min-h-screen flex justify-center p-4 sm:p-8">
-
-    <!-- Login Container -->
+  <body
+    class="antialiased text-gray-800 min-h-screen flex flex-col justify-between p-3 sm:p-6"
+    x-data="absensiApp()"
+    x-init="initApp()"
+    x-cloak
+  >
+    <!-- LOGIN CONTAINER -->
     <div
-      id="login-container"
-      class="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden self-center p-8 transition-all"
+      x-show="!isLoggedIn"
+      class="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden self-center my-auto p-6 sm:p-8 border border-gray-100 transition-all"
     >
       <div class="text-center mb-6">
         <div
-          class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4"
+          class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-3 text-blue-600"
         >
-          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
               d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"
             ></path></svg>
         </div>
-        <h2 class="text-2xl font-bold text-gray-800">Login Admin</h2>
-        <p class="text-sm text-gray-500 mt-1">Silakan masuk untuk mencatat absensi</p>
+        <h2 class="text-2xl font-bold text-gray-800">Login Sistem Absensi</h2>
+        <p class="text-gray-500 mt-1">Masuk dengan akun email Supabase untuk mengelola data</p>
       </div>
-      <form id="login-form">
+
+      <form @submit.prevent="runButtonAction('login', () => handleLogin())">
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <label class="block font-semibold text-gray-600 mb-1">Email</label>
           <input
-            type="text"
-            id="username"
+            type="email"
+            x-model="loginInput.email"
             required
-            autofocus
             autocomplete="username"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="nama@email.com"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           >
         </div>
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+
+        <div class="mb-6" x-data="{ showPassword: false }">
+          <label for="login-password" class="block font-semibold text-gray-600 mb-1">Password</label>
           <input
-            type="password"
-            id="password"
+            id="login-password"
+            :type="showPassword ? 'text' : 'password'"
+            x-model="loginInput.password"
             required
             autocomplete="current-password"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Masukkan password"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           >
+          <label
+            for="show-login-password"
+            class="mt-2 inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer"
+          >
+            <input
+              id="show-login-password"
+              type="checkbox"
+              x-model="showPassword"
+              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            >
+            Tampilkan password
+          </label>
         </div>
+
         <button
           type="submit"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors shadow"
+          :disabled="loadingAction === 'login'"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow text-sm"
         >
-          Masuk
+          <svg
+            x-show="loadingAction === 'login'"
+            class="inline w-4 h-4 mr-1 animate-spin"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          ><circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+          Masuk ke Aplikasi
         </button>
       </form>
-      <div class="mt-4 text-center">
-        <p class="text-xs text-gray-400">Default Username: <span class="font-bold text-gray-600">admin</span> | Password: <span class="font-bold text-gray-600">admin123</span></p>
+
+      <div class="mt-5 p-3 bg-gray-50 rounded-lg border border-gray-200 text-[11px] text-gray-500">
+        Akun dibuat di database. Hubungi admin jika belum memiliki akses.
       </div>
     </div>
 
-    <!-- Main Application Container -->
+    <!-- MAIN APPLICATION CONTAINER -->
     <div
-      id="app-container"
-      class="hidden w-full max-w-4xl bg-white rounded-2xl shadow-xl self-start mt-2 sm:mt-6 transition-all"
+      x-show="isLoggedIn"
+      class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl my-2 border border-gray-100 transition-all overflow-visible"
     >
-        
-      <!-- Header Section -->
+
+      <!-- Header Dashboard -->
       <div
         class="bg-blue-600 text-white px-6 py-5 rounded-t-2xl flex flex-col sm:flex-row justify-between items-center gap-4"
       >
-        <div class="text-center sm:text-left">
-          <h1 class="text-2xl font-bold">Laporan Absensi</h1>
-          <p class="text-blue-100 text-sm mt-1" id="current-date">Memuat tanggal...</p>
+        <div>
+          <div class="flex items-center gap-2 justify-center sm:justify-start">
+            <h1 class="text-xl sm:text-2xl font-bold">Laporan Absensi</h1>
+            <span
+              class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-800 text-blue-100 text-center"
+              x-text="getRoleBadge()"
+            ></span>
+          </div>
+          <p
+            class="text-blue-100 text-sm mt-1 text-center sm:text-left"
+            x-text="currentDateDisplay"
+          ></p>
         </div>
+
         <div class="flex flex-wrap justify-center gap-2">
           <button
-            id="install-app-btn"
-            class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+            x-show="!isAppInstalled"
+            @click="installApp()"
+            class="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-1.5"
           >
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              ></path></svg>
-            Install App
+                d="M12 16V4m0 0L8 8m4-4 4 4M5 14v5a1 1 0 001 1h12a1 1 0 001-1v-5"
+              ></path>
+            </svg>
+            Install Aplikasi
           </button>
+
+          <!-- Export PDF (Admin Utama atau Admin Kelompok) -->
           <button
-            id="export-pdf-btn"
-            class="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+            @click="runButtonAction('exportPdf', () => handleExportPdf())"
+            :disabled="loadingAction !== '' || !canExportPdf()"
+            :class="canExportPdf() ? 'bg-white text-blue-600 hover:bg-blue-50' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+            class="font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-1.5"
+            :title="currentUser.role === 'admin_kelompok' ? `Export PDF kelompok ${currentUser.kelompok}` : canExportPdf() ? 'Cetak Laporan PDF' : 'Fitur Export PDF khusus admin'"
           >
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               ></path></svg>
+            <svg
+              x-show="loadingAction === 'exportPdf'"
+              class="w-4 h-4 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            ><circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
             Export PDF
           </button>
+
           <button
-            id="logout-btn"
-            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center"
+            @click="runButtonAction('logout', () => handleLogout())"
+            :disabled="loadingAction !== ''"
+            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-1"
           >
+            <svg
+              x-show="loadingAction === 'logout'"
+              class="w-3.5 h-3.5 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            ><circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
             Logout
           </button>
         </div>
       </div>
 
-      <div class="p-6">
-        <!-- Ringkasan Jumlah Kehadiran (Statistik) -->
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div class="p-4 sm:p-6">
+        <!-- Ringkasan Statistik Kehadiran -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-6">
           <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl text-center shadow-sm">
-            <span class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Data</span>
-            <span id="stat-total" class="text-xl font-bold text-gray-800">0</span>
-            <div class="text-[10px] text-gray-500 mt-0.5" id="stat-total-gender">L: 0 | P: 0</div>
+            <span class="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total Data</span>
+            <span class="text-xl font-bold text-gray-800" x-text="stats.total">0</span>
+            <div
+              class="text-[10px] text-gray-500 mt-0.5"
+              x-text="`L: ${stats.totalL} | P: ${stats.totalP}`"
+            ></div>
           </div>
           <div class="bg-green-50 border border-green-200 p-3 rounded-xl text-center shadow-sm">
-            <span class="block text-xs font-semibold text-green-700 uppercase tracking-wider">Hadir</span>
-            <span id="stat-hadir" class="text-xl font-bold text-green-800">0</span>
-            <div class="text-[10px] text-green-600 mt-0.5" id="stat-hadir-gender">L: 0 | P: 0</div>
+            <span class="block text-[10px] font-semibold text-green-700 uppercase tracking-wider">Hadir</span>
+            <span class="text-xl font-bold text-green-800" x-text="stats.hadir">0</span>
+            <div
+              class="text-[10px] text-green-600 mt-0.5"
+              x-text="`L: ${stats.hadirL} | P: ${stats.hadirP}`"
+            ></div>
           </div>
           <div class="bg-red-50 border border-red-200 p-3 rounded-xl text-center shadow-sm">
-            <span class="block text-xs font-semibold text-red-700 uppercase tracking-wider">Tidak Hadir</span>
-            <span id="stat-tidakhadir" class="text-xl font-bold text-red-800">0</span>
-            <div class="text-[10px] text-red-600 mt-0.5" id="stat-tidakhadir-gender">L: 0 | P: 0</div>
+            <span class="block text-[10px] font-semibold text-red-700 uppercase tracking-wider">Tidak Hadir</span>
+            <span class="text-xl font-bold text-red-800" x-text="stats.tidakHadir">0</span>
+            <div
+              class="text-[10px] text-red-600 mt-0.5"
+              x-text="`L: ${stats.tidakHadirL} | P: ${stats.tidakHadirP}`"
+            ></div>
           </div>
           <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-xl text-center shadow-sm">
-            <span class="block text-xs font-semibold text-yellow-700 uppercase tracking-wider">Izin</span>
-            <span id="stat-izin" class="text-xl font-bold text-yellow-800">0</span>
-            <div class="text-[10px] text-yellow-600 mt-0.5" id="stat-izin-gender">L: 0 | P: 0</div>
+            <span class="block text-[10px] font-semibold text-yellow-700 uppercase tracking-wider">Izin</span>
+            <span class="text-xl font-bold text-yellow-800" x-text="stats.izin">0</span>
+            <div
+              class="text-[10px] text-yellow-600 mt-0.5"
+              x-text="`L: ${stats.izinL} | P: ${stats.izinP}`"
+            ></div>
           </div>
           <div class="bg-purple-50 border border-purple-200 p-3 rounded-xl text-center shadow-sm">
-            <span class="block text-xs font-semibold text-purple-700 uppercase tracking-wider">Sakit</span>
-            <span id="stat-sakit" class="text-xl font-bold text-purple-800">0</span>
-            <div class="text-[10px] text-purple-600 mt-0.5" id="stat-sakit-gender">L: 0 | P: 0</div>
+            <span class="block text-[10px] font-semibold text-purple-700 uppercase tracking-wider">Sakit</span>
+            <span class="text-xl font-bold text-purple-800" x-text="stats.sakit">0</span>
+            <div
+              class="text-[10px] text-purple-600 mt-0.5"
+              x-text="`L: ${stats.sakitL} | P: ${stats.sakitP}`"
+            ></div>
           </div>
         </div>
 
-        <!-- Pengaturan Judul Laporan -->
-        <div class="mb-6 bg-blue-50 p-5 rounded-xl border border-blue-100">
-          <label for="jenis-sambung" class="block text-sm font-semibold text-blue-800 mb-2">Jenis Sambung / Acara (Untuk Judul PDF)</label>
-          <input
-            type="text"
-            id="jenis-sambung"
-            placeholder="Contoh: Reguler, Shift Pagi, Sesi 1..."
-            class="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+        <!-- Pengaturan Judul Sambung -->
+        <div
+          class="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100 grid grid-cols-1 sm:grid-cols-1 sm:items-end gap-3"
+        >
+          <div
+            class="text-sm text-blue-600 bg-blue-100/60 p-2.5 rounded-lg border border-blue-200/80"
           >
+            <p class="font-medium">Catatan Hak Akses:</p>
+            <p x-show="currentUser.role === 'admin'">Anda memegang akses **Admin Utama** (Bisa kelola semua data, materi, & export).</p>
+            <p
+              x-show="currentUser.role === 'admin_laki'"
+              x-text="`Anda login sebagai Admin Laki-laki: hanya dapat menambah, mengubah, dan menghapus data Laki-laki di ${currentUser.kelompok}.`"
+            ></p>
+            <p
+              x-show="currentUser.role === 'admin_perempuan'"
+              x-text="`Anda login sebagai Admin Perempuan: hanya dapat menambah, mengubah, dan menghapus data Perempuan di ${currentUser.kelompok}.`"
+            ></p>
+            <p
+              x-show="currentUser.role === 'admin_kelompok'"
+              x-text="`Anda hanya dapat melihat dan mengelola data ${currentUser.kelompok}`"
+            ></p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 sm:items-end gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-blue-800 mb-1">Jenis Sambung</label>
+              <input
+                type="text"
+                x-model="jenisSambung"
+                placeholder="Contoh: Pengajian Rutin, Sesi Pagi..."
+                class="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-blue-800 mb-1">Kelompok</label>
+              <input
+                type="text"
+                x-model="kelompok"
+                @change="loadGroupMateri()"
+                :disabled="isGroupBoundRole()"
+                :placeholder="isGroupBoundRole() ? currentUser.kelompok : 'Contoh: Kelompok A'"
+                class="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-blue-100 disabled:text-blue-800"
+              >
+            </div>
+          </div>
+          <!-- <div
+            class="text-sm text-blue-600 bg-blue-100/60 p-2.5 rounded-lg border border-blue-200/80"
+          >
+            <p class="font-medium">Catatan Hak Akses:</p>
+            <p x-show="currentUser.role === 'admin'">Anda memegang akses **Admin Utama** (Bisa kelola semua data, materi, & export).</p>
+            <p
+              x-show="currentUser.role === 'admin_laki'"
+              x-text="`Anda login sebagai Admin Laki-laki: hanya dapat menambah, mengubah, dan menghapus data Laki-laki di ${currentUser.kelompok}.`"
+            ></p>
+            <p
+              x-show="currentUser.role === 'admin_perempuan'"
+              x-text="`Anda login sebagai Admin Perempuan: hanya dapat menambah, mengubah, dan menghapus data Perempuan di ${currentUser.kelompok}.`"
+            ></p>
+            <p
+              x-show="currentUser.role === 'admin_kelompok'"
+              x-text="`Anda hanya dapat melihat dan mengelola data ${currentUser.kelompok}`"
+            ></p>
+          </div> -->
         </div>
 
-        <!-- Form Section dengan Tab Switcher (Single, Bulk, & Materi Input) -->
-        <div class="mb-8 bg-gray-50 p-5 rounded-xl border border-gray-200">
+        <!-- FORM SECTION (Single, Bulk, Materi) -->
+        <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+
           <!-- Tab Menu Header -->
-          <div class="flex border-b border-gray-200 mb-4 pb-2 gap-4 overflow-x-auto">
+          <div
+            class="flex border-b border-gray-200 mb-4 pb-2 gap-4 overflow-x-auto text-sm"
+          >
             <button
               type="button"
-              id="tab-single"
-              class="font-semibold text-blue-600 border-b-2 border-blue-600 pb-2 text-sm focus:outline-none transition-all whitespace-nowrap"
+              @click="activeTab = 'single'"
+              :class="activeTab === 'single' ? 'font-bold text-blue-600 border-b-2 border-blue-600' : 'font-semibold text-gray-500 hover:text-blue-600'"
+              class="pb-2 transition-all whitespace-nowrap"
             >
               Input Satuan
             </button>
             <button
               type="button"
-              id="tab-bulk"
-              class="font-semibold text-gray-500 hover:text-blue-600 pb-2 text-sm focus:outline-none transition-all whitespace-nowrap"
+              @click="activeTab = 'bulk'"
+              :class="activeTab === 'bulk' ? 'font-bold text-blue-600 border-b-2 border-blue-600' : 'font-semibold text-gray-500 hover:text-blue-600'"
+              class="pb-2 transition-all whitespace-nowrap"
             >
               Input Banyak Nama (Massal)
             </button>
             <button
               type="button"
-              id="tab-materi"
-              class="font-semibold text-gray-500 hover:text-blue-600 pb-2 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center gap-1.5"
+              @click="activeTab = 'materi'"
+              :class="activeTab === 'materi' ? 'font-bold text-blue-600 border-b-2 border-blue-600' : 'font-semibold text-gray-500 hover:text-blue-600'"
+              class="pb-2 transition-all whitespace-nowrap flex items-center gap-1"
             >
               Input Materi
+              <span
+                x-show="!canManageMateri()"
+                class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded ml-1"
+                aria-label="Terkunci"
+                title="Terkunci"
+              >
+                <svg
+                  class="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <rect x="5" y="10" width="14" height="11" rx="2" stroke-width="2"></rect>
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 10V7a4 4 0 118 0v3"
+                  ></path>
+                </svg>
+              </span>
             </button>
           </div>
 
           <!-- 1. Form Input Satuan -->
-          <form id="attendance-form">
-            <h2 class="text-lg font-semibold mb-4 text-gray-700">Catat Kehadiran</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
-                        
-              <div class="sm:col-span-2 md:col-span-2">
-                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+          <form
+            x-show="activeTab === 'single'"
+            @submit.prevent="runButtonAction('saveSingle', () => saveSingleAttendance())"
+          >
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Nama Lengkap</label>
                 <input
                   type="text"
-                  id="name"
+                  x-model="formSingle.name"
+                  required
                   placeholder="Masukkan nama..."
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 >
               </div>
 
               <div>
-                <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Jenis Kelamin</label>
                 <select
-                  id="gender"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                  x-model="formSingle.gender"
+                  :disabled="['admin_laki', 'admin_perempuan'].includes(currentUser.role)"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium disabled:bg-gray-100 disabled:text-gray-500"
                 >
                   <option value="Laki-laki">Laki-laki</option>
                   <option value="Perempuan">Perempuan</option>
                 </select>
               </div>
-                        
+
               <div>
-                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Status</label>
                 <select
-                  id="status"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                  x-model="formSingle.status"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
                 >
                   <option value="Hadir">Hadir</option>
                   <option value="Tidak Hadir">Tidak Hadir</option>
@@ -243,177 +432,373 @@
               <div>
                 <button
                   type="submit"
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow transition-colors"
+                  :disabled="loadingAction !== '' || !formSingle.name.trim()"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg text-sm shadow transition-colors disabled:opacity-60"
                 >
-                  Simpan
+                  <svg
+                    x-show="loadingAction === 'saveSingle'"
+                    class="inline w-4 h-4 mr-1 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  ><circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle><path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    ></path></svg>
+                  Simpan Data
                 </button>
               </div>
             </div>
           </form>
 
-          <!-- 2. Form Input Banyak Nama Sekaligus -->
-          <div id="bulk-attendance-container" class="hidden">
-            <h2 class="text-lg font-semibold mb-1 text-gray-700">Input Banyak Nama Sekaligus</h2>
-            <p class="text-xs text-gray-500 mb-3">Tulis atau tempel (paste) daftar nama. Pisahkan nama dengan baris baru (Enter).</p>
-                    
-            <div class="mb-3">
-              <textarea id="bulk-names" rows="4" placeholder="Contoh:&#10;Budi Santoso&#10;Siti Aminah&#10;Ahmad Subagyo" 
-                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono text-sm"></textarea>
-            </div>
+          <!-- 2. Form Input Banyak Nama (Massal) -->
+          <div x-show="activeTab === 'bulk'">
+            <p class="text-sm text-gray-500 mb-2">Tempelkan daftar nama (pisahkan setiap nama dengan baris baru / Enter).</p>
+            <textarea x-model="bulkText" rows="3" placeholder="Contoh:&#10;Budi Santoso&#10;Ahmad Subagyo"
+                        class="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono"></textarea>
 
             <button
               type="button"
-              id="btn-generate-bulk"
-              class="w-full md:w-1/2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow transition-colors"
+              @click="runButtonAction('generateBulk', () => generateBulkChecklist())"
+              :disabled="loadingAction !== '' || !bulkText.trim()"
+              class="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg shadow transition-colors disabled:opacity-60"
             >
-              Buat Daftar Centang Kehadiran
+              <svg
+                x-show="loadingAction === 'generateBulk'"
+                class="inline w-3.5 h-3.5 mr-1 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              ><circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle><path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path></svg>
+              Buat Checklist Kehadiran
             </button>
 
-            <!-- Area Checklist Hasil Generate -->
-            <div id="bulk-checklist-wrapper" class="hidden border-t border-gray-200 pt-4 mt-4">
-              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <span class="text-sm font-semibold text-gray-700">Atur Massal:</span>
-                <div class="flex flex-wrap gap-2 text-xs">
+            <!-- Area Checklist Massal -->
+            <div x-show="bulkItems.length > 0" class="mt-4 border-t border-gray-200 pt-3">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <span class="text-sm font-bold text-gray-700">Atur Massal Checklist:</span>
+                <div class="flex flex-wrap gap-1.5 text-[11px]">
                   <button
                     type="button"
-                    id="btn-bulk-all-hadir"
-                    class="bg-green-100 hover:bg-green-200 text-green-800 font-medium px-2 py-1 rounded border border-green-300"
-                  >Set Semua Hadir</button>
+                    @click="runButtonAction('bulkSetPresent', () => setAllBulkStatus('Hadir'))"
+                    :disabled="loadingAction !== ''"
+                    class="bg-green-100 hover:bg-green-200 text-green-800 font-medium px-2 py-0.5 rounded"
+                  ><svg
+                      x-show="loadingAction === 'bulkSetPresent'"
+                      class="inline w-3 h-3 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    ><circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle><path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path></svg>Set Semua Hadir</button>
                   <button
                     type="button"
-                    id="btn-bulk-all-tidakhadir"
-                    class="bg-red-100 hover:bg-red-200 text-red-800 font-medium px-2 py-1 rounded border border-red-300"
-                  >Set Semua Tidak Hadir</button>
+                    @click="runButtonAction('bulkSetAbsent', () => setAllBulkStatus('Tidak Hadir'))"
+                    :disabled="loadingAction !== ''"
+                    class="bg-red-100 hover:bg-red-200 text-red-800 font-medium px-2 py-0.5 rounded"
+                  ><svg
+                      x-show="loadingAction === 'bulkSetAbsent'"
+                      class="inline w-3 h-3 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    ><circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle><path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path></svg>Set Semua Tidak Hadir</button>
                   <button
                     type="button"
-                    id="btn-bulk-all-laki"
-                    class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium px-2 py-1 rounded border border-blue-300"
-                  >Set Semua Laki-laki</button>
+                    x-show="['admin', 'admin_kelompok'].includes(currentUser.role)"
+                    @click="runButtonAction('bulkSetMale', () => setAllBulkGender('Laki-laki'))"
+                    :disabled="loadingAction !== ''"
+                    class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium px-2 py-0.5 rounded"
+                  ><svg
+                      x-show="loadingAction === 'bulkSetMale'"
+                      class="inline w-3 h-3 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    ><circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle><path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path></svg>Set Laki-laki</button>
                   <button
                     type="button"
-                    id="btn-bulk-all-perempuan"
-                    class="bg-pink-100 hover:bg-pink-200 text-pink-800 font-medium px-2 py-1 rounded border border-pink-300"
-                  >Set Semua Perempuan</button>
+                    x-show="['admin', 'admin_kelompok'].includes(currentUser.role)"
+                    @click="runButtonAction('bulkSetFemale', () => setAllBulkGender('Perempuan'))"
+                    :disabled="loadingAction !== ''"
+                    class="bg-pink-100 hover:bg-pink-200 text-pink-800 font-medium px-2 py-0.5 rounded"
+                  ><svg
+                      x-show="loadingAction === 'bulkSetFemale'"
+                      class="inline w-3 h-3 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    ><circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle><path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path></svg>Set Perempuan</button>
                 </div>
               </div>
 
-              <!-- Daftar Nama Hasil Parse -->
               <div
-                id="bulk-list-items"
-                class="max-h-60 overflow-y-auto space-y-2 mb-4 p-2 bg-white rounded-lg border border-gray-200"
+                class="max-h-52 overflow-y-auto space-y-1.5 p-2 bg-white rounded-lg border border-gray-200"
               >
-                <!-- Item baris nama generated via JS -->
+                <template x-for="(item, idx) in bulkItems" :key="idx">
+                  <div
+                    class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100 text-sm gap-2"
+                  >
+                    <span class="font-medium text-gray-800 capitalize" x-text="item.name"></span>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                      <select
+                        x-model="item.gender"
+                        :disabled="['admin_laki', 'admin_perempuan'].includes(currentUser.role)"
+                        class="px-2 py-1 border rounded text-sm bg-white outline-none disabled:bg-gray-100"
+                      >
+                        <option value="Laki-laki">Laki-laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                      </select>
+                      <select
+                        x-model="item.status"
+                        class="px-2 py-1 border rounded text-sm bg-white outline-none"
+                      >
+                        <option value="Hadir">Hadir</option>
+                        <option value="Tidak Hadir">Tidak Hadir</option>
+                        <option value="Izin">Izin</option>
+                        <option value="Sakit">Sakit</option>
+                      </select>
+                    </div>
+                  </div>
+                </template>
               </div>
 
               <button
                 type="button"
-                id="btn-save-bulk"
-                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-lg shadow transition-colors flex justify-center items-center gap-2"
+                @click="runButtonAction('saveBulk', () => saveBulkAttendance())"
+                :disabled="loadingAction !== ''"
+                class="w-full mt-3 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow text-sm flex justify-center items-center gap-1.5 disabled:opacity-60"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
+                <svg
+                  x-show="loadingAction === 'saveBulk'"
+                  class="w-4 h-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                ><circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle><path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                   ></path></svg>
-                Simpan Semua Data Kehadiran
+                Simpan Semua Data Kehadiran Massal
               </button>
             </div>
           </div>
 
           <!-- 3. Form Input Materi -->
-          <div id="materi-container" class="hidden">
-            <h2 class="text-lg font-semibold mb-1 text-gray-700">Input Materi Pembelajaran</h2>
-            <p class="text-xs text-gray-500 mb-4">Informasi materi ini akan otomatis dicantumkan pada hasil laporan Export PDF.</p>
-                    
-            <div class="space-y-4">
+          <div x-show="activeTab === 'materi'">
+            <div
+              x-show="!canManageMateri()"
+              class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 mb-3"
+            >
+              ⚠️️ Akses terbatas: hanya Admin Utama atau admin kelompok yang dapat mengelola materi kelompoknya.
+            </div>
+
+            <div class="space-y-3">
               <div>
-                <label for="materi-quran" class="block text-sm font-medium text-gray-700 mb-1">Al-Qur'an</label>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Al-Qur'an</label>
                 <input
                   type="text"
-                  id="materi-quran"
-                  placeholder="Contoh: Q.S. Al-Baqarah ayat 10-11"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white text-sm"
+                  x-model="materi.quran"
+                  :disabled="!canManageMateri()"
+                  placeholder="Contoh: Q.S. Al-Baqarah ayat 1-15"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
                 >
               </div>
               <div>
-                <label for="materi-hadits" class="block text-sm font-medium text-gray-700 mb-1">Al-Hadits</label>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Al-Hadits</label>
                 <input
                   type="text"
-                  id="materi-hadits"
-                  placeholder="Contoh: K. Khotbah sampai halaman 20"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white text-sm"
+                  x-model="materi.hadits"
+                  :disabled="!canManageMateri()"
+                  placeholder="Contoh: Kitab Sholat Hal 10-12"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
                 >
               </div>
               <div>
-                <label for="materi-nasehat" class="block text-sm font-medium text-gray-700 mb-1">Nasehat Agama</label>
-                <textarea id="materi-nasehat" rows="3" placeholder="Contoh: Menjaga niat karena Allah, pentingnya silaturahmi & kedisiplinan..." 
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm bg-white"></textarea>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Nasehat Agama</label>
+                <textarea x-model="materi.nasehat" :disabled="!canManageMateri()" rows="2" placeholder="Contoh: Menjaga kerukunan, niat karena Allah..." class="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"></textarea>
               </div>
+
               <button
                 type="button"
-                id="btn-save-materi"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-5 rounded-lg shadow transition-colors text-sm flex items-center gap-2"
+                @click="runButtonAction('saveMateri', () => saveMateri())"
+                x-show="canManageMateri()"
+                :disabled="loadingAction !== ''"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow text-sm disabled:opacity-60"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                <svg
+                  x-show="loadingAction === 'saveMateri'"
+                  class="inline w-3.5 h-3.5 mr-1 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                ><circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle><path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                   ></path></svg>
                 Simpan Data Materi
               </button>
             </div>
           </div>
+
         </div>
 
-        <!-- Header Filter Gender & Aksi Massal Tabel -->
+        <!-- Filter Tab Gender -->
         <div
           class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3"
         >
-          <!-- Filter Tab Gender -->
-          <div class="inline-flex rounded-lg bg-gray-100 p-1 border border-gray-200 text-sm">
+          <div
+            class="inline-flex rounded-lg bg-gray-100 p-1 border border-gray-200 text-sm font-medium"
+          >
             <button
+              x-show="!['admin_laki', 'admin_perempuan'].includes(currentUser.role)"
               type="button"
-              id="filter-all"
-              class="filter-tab-btn px-3 py-1.5 rounded-md font-semibold text-blue-600 bg-white shadow-sm transition-all"
+              @click="setGenderFilter('all')"
+              :class="genderFilter === 'all' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
+              class="px-3 py-1.5 rounded-md transition-all"
             >
               Semua Data
             </button>
             <button
+              x-show="currentUser.role !== 'admin_perempuan'"
               type="button"
-              id="filter-laki"
-              class="filter-tab-btn px-3 py-1.5 rounded-md font-medium text-gray-600 hover:text-blue-600 transition-all"
+              @click="setGenderFilter('Laki-laki')"
+              :class="genderFilter === 'Laki-laki' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
+              class="px-3 py-1.5 rounded-md transition-all"
             >
               Laki-laki
             </button>
             <button
+              x-show="currentUser.role !== 'admin_laki'"
               type="button"
-              id="filter-perempuan"
-              class="filter-tab-btn px-3 py-1.5 rounded-md font-medium text-gray-600 hover:text-blue-600 transition-all"
+              @click="setGenderFilter('Perempuan')"
+              :class="genderFilter === 'Perempuan' ? 'bg-white text-pink-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
+              class="px-3 py-1.5 rounded-md transition-all"
             >
               Perempuan
             </button>
           </div>
+          <button
+            type="button"
+            @click="runButtonAction('refresh', () => refreshData())"
+            :disabled="loadingAction !== ''"
+            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg shadow-sm hover:text-blue-600 hover:border-blue-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <svg
+              :class="loadingAction === 'refresh' ? 'animate-spin' : ''"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 12a9 9 0 1 1-3-6.7"/>
+              <path d="M21 3v6h-6"/>
+            </svg>
+            Refresh
+          </button>
         </div>
 
-        <!-- Wrapper Utama Card Tabel & Panel Aksi Massal -->
+        <!-- TABLE CONTAINER -->
         <div class="rounded-xl border border-gray-200 shadow-sm bg-white overflow-visible relative">
-                
-          <!-- Panel Aksi Massal untuk Data Dicentang di Tabel -->
+
+          <!-- Table Bulk Action Bar (Sticky Top) -->
           <div
-            id="table-bulk-action-bar"
-            class="hidden sticky top-0 z-20 p-3.5 bg-blue-50/95 backdrop-blur-md border-b border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all shadow-sm"
+            x-show="selectedIds.length > 0"
+            class="sticky top-0 z-20 p-3.5 bg-blue-50/95 backdrop-blur-md border-b border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all shadow-sm"
           >
             <div class="flex items-center gap-2">
-              <span id="selected-count-text" class="text-sm font-bold text-blue-800">0 data dipilih</span>
+              <span
+                class="text-sm font-bold text-blue-800"
+                x-text="`${selectedIds.length} data dipilih`"
+              ></span>
             </div>
-                    
             <div
               class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto"
             >
               <select
-                id="table-bulk-status-select"
+                x-model="bulkTableStatus"
                 class="w-full sm:w-auto px-3 py-2 text-sm border border-blue-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="" disabled selected>-- Ubah Status Kehadiran --</option>
@@ -424,105 +809,246 @@
               </select>
               <button
                 type="button"
-                id="btn-apply-table-bulk-status"
-                class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition-colors flex items-center justify-center"
+                @click="runButtonAction('bulkUpdate', () => applyTableBulkStatus())"
+                :disabled="loadingAction !== ''"
+                class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition-colors flex items-center justify-center disabled:opacity-60"
               >
+                <svg
+                  x-show="loadingAction === 'bulkUpdate'"
+                  class="inline w-3.5 h-3.5 mr-1 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                ><circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle><path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  ></path></svg>
                 Terapkan Kehadiran
               </button>
               <button
                 type="button"
-                id="btn-delete-table-bulk"
-                class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition-colors flex items-center justify-center gap-1"
+                @click="runButtonAction('bulkDelete', () => deleteTableBulk())"
+                :disabled="loadingAction !== ''"
+                class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition-colors flex items-center justify-center gap-1 disabled:opacity-60"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                <svg
+                  x-show="loadingAction === 'bulkDelete'"
+                  class="inline w-3.5 h-3.5 mr-1 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                ><circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle><path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                   ></path></svg>
                 Hapus Terpilih
               </button>
             </div>
           </div>
 
-          <!-- Table Section dengan Scroll Internal -->
-          <div class="overflow-auto max-h-[500px]">
-            <table class="min-w-full divide-y divide-gray-200 border-collapse">
+          <div class="overflow-auto max-h-[600px]">
+            <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
               <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th scope="col" class="bg-gray-50 px-4 py-3 text-center w-10">
+                  <th class="px-3 py-3 text-center w-8">
                     <input
                       type="checkbox"
-                      id="select-all-checkbox"
-                      class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                      title="Centang Semua"
+                      @change="toggleSelectAll($event)"
+                      :checked="isAllSelected()"
+                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     >
                   </th>
+                  <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider w-8">No</th>
+                  <th class="px-4 py-3 text-gray-500 font-semibold uppercase tracking-wider">Nama</th>
+                  <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Kelompok</th>
+                  <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Gender</th>
+                  <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Status</th>
+                  <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Waktu</th>
                   <th
-                    scope="col"
-                    class="bg-gray-50 px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-10"
-                  >No</th>
-                  <th
-                    scope="col"
-                    class="bg-gray-50 px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >Nama</th>
-                  <th
-                    scope="col"
-                    class="bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >Gender</th>
-                  <th
-                    scope="col"
-                    class="bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >Status</th>
-                  <th
-                    scope="col"
-                    class="bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >Waktu</th>
-                  <th
-                    scope="col"
-                    class="bg-gray-50 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24"
+                    class="px-3 py-3 text-center text-gray-500 font-semibold uppercase tracking-wider w-20"
                   >Aksi</th>
                 </tr>
               </thead>
-              <tbody id="table-body" class="bg-white divide-y divide-gray-200">
-                <!-- Data akan diisi lewat JS -->
+              <tbody class="bg-white divide-y divide-gray-200">
+                <template x-for="(record, index) in filteredRecords" :key="record.id">
+                  <tr
+                    :class="selectedIds.includes(record.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50'"
+                  >
+                    <td class="px-3 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        :value="record.id"
+                        x-model="selectedIds"
+                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      >
+                    </td>
+                    <td class="px-3 py-3 text-gray-500" x-text="index + 1"></td>
+                    <td
+                      class="px-4 py-3 font-semibold text-gray-900 capitalize"
+                      x-text="record.name"
+                    ></td>
+                    <td class="px-3 py-3 text-gray-600" x-text="record.kelompok"></td>
+                    <td class="px-3 py-3">
+                      <span
+                        x-show="record.gender === 'Perempuan'"
+                        class="px-2 py-0.5 rounded text-[10px] font-semibold bg-pink-100 text-pink-800"
+                      >P</span>
+                      <span
+                        x-show="record.gender === 'Laki-laki'"
+                        class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800"
+                      >L</span>
+                    </td>
+                    <td class="px-3 py-3">
+                      <span
+                        :class="getStatusBadgeClass(record.status)"
+                        class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                        x-text="record.status"
+                      ></span>
+                    </td>
+                    <td class="px-3 py-3 text-gray-500" x-text="record.time"></td>
+                    <td class="px-3 py-3 text-center">
+                      <div class="flex items-center justify-center gap-1.5">
+                        <!-- Button Edit (Cek Role) -->
+                        <button
+                          @click="runButtonAction(`edit-${record.id}`, () => editRecord(record))"
+                          :disabled="loadingAction !== '' || !canUserModify(record.gender, record.kelompok)"
+                          :class="canUserModify(record.gender, record.kelompok) ? 'text-blue-500 hover:text-blue-700' : 'text-gray-300 cursor-not-allowed'"
+                          class="p-1"
+                          title="Edit"
+                        >
+                          <svg
+                            x-show="loadingAction === `edit-${record.id}`"
+                            class="w-4 h-4 animate-spin"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          ><circle
+                              class="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              stroke-width="4"
+                            ></circle><path
+                              class="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                            ></path></svg>
+                          <svg
+                            x-show="loadingAction !== `edit-${record.id}`"
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          ><path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            ></path></svg>
+                        </button>
+                        <!-- Button Delete (Cek Role) -->
+                        <button
+                          @click="runButtonAction(`delete-${record.id}`, () => deleteRecord(record))"
+                          :disabled="loadingAction !== '' || !canUserModify(record.gender, record.kelompok)"
+                          :class="canUserModify(record.gender, record.kelompok) ? 'text-red-500 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'"
+                          class="p-1"
+                          title="Hapus"
+                        >
+                          <svg
+                            x-show="loadingAction === `delete-${record.id}`"
+                            class="w-4 h-4 animate-spin"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          ><circle
+                              class="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              stroke-width="4"
+                            ></circle><path
+                              class="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                            ></path></svg>
+                          <svg
+                            x-show="loadingAction !== `delete-${record.id}`"
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          ><path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            ></path></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
               </tbody>
             </table>
           </div>
 
+          <div x-show="filteredRecords.length === 0" class="text-center py-8 text-gray-400 text-sm">
+            Belum ada data absensi untuk kategori ini.
+          </div>
         </div>
 
-        <!-- Empty State Message -->
-        <div id="empty-state" class="text-center py-10 hidden">
-          <svg
-            class="mx-auto h-12 w-12 text-gray-300"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada data</h3>
-          <p class="mt-1 text-sm text-gray-500">Mulai catat absensi dengan mengisi form di atas.</p>
-        </div>
-            
-        <!-- Clear All Button -->
-        <div class="mt-4 flex justify-end">
+        <!-- Clear All Data (Hanya Admin Utama) -->
+        <div
+          x-show="records.length > 0 && currentUser.role === 'admin'"
+          class="mt-4 flex justify-end"
+        >
           <button
-            id="clear-all-btn"
-            class="text-red-600 hover:text-red-800 text-sm font-medium transition-colors hidden"
+            @click="runButtonAction('clearAll', () => clearAllData())"
+            :disabled="loadingAction !== ''"
+            class="text-red-600 hover:text-red-800 text-sm font-semibold transition-colors disabled:opacity-60"
           >
-            Hapus Semua Data
+            <svg
+              x-show="loadingAction === 'clearAll'"
+              class="inline w-3.5 h-3.5 mr-1 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            ><circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            Hapus Seluruh Data Absensi
           </button>
         </div>
       </div>
     </div>
 
-    <script src="./index.js"></script>
+    <!-- ALPINE.JS APPLICATION LOGIC -->
+    <script src="./login.js"></script>
+    <script src="./crud.js"></script>
+    <script src="./export.js"></script>
+    <script src="./absensi.js"></script>
   </body>
 </html>

@@ -1,9 +1,13 @@
 // Naikkan versi setiap kali file aplikasi berubah agar cache lama dibuang.
-const CACHE_VERSION = "absensi-pwa-v2";
+const CACHE_VERSION = "absensi-pwa-v4";
 
 // App shell: dicache saat install supaya aplikasi bisa dibuka offline.
 const APP_SHELL = [
   "./",
+  "./absensi.js",
+  "./crud.js",
+  "./login.js",
+  "./export.js",
   "./index.html",
   "./index.js",
   "./style.css",
@@ -76,6 +80,9 @@ self.addEventListener("fetch", (event) => {
 
   // Cache API hanya mendukung http(s); abaikan chrome-extension://, data:, dll.
   if (!url.protocol.startsWith("http")) return;
+
+  // Supabase responses must always reflect the latest database state.
+  if (url.hostname.endsWith(".supabase.co") || url.hostname.endsWith(".supabase.in")) return;
 
   const isSameOrigin = url.origin === self.location.origin;
 
