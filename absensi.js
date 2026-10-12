@@ -11,6 +11,7 @@ function absensiApp() {
     authUserId: "",
     authSessionTask: null,
     authSubscription: null,
+    authInitialized: false,
 
     // Supabase Connection
     supabaseClient: null,
@@ -25,6 +26,7 @@ function absensiApp() {
     materi: { quran: "", hadits: "", nasehat: "" },
     jenisSambung: "Pengajian Rutin",
     currentDateDisplay: "",
+    isLoadingAttendance: false,
 
     // Tab & Filter States
     activeTab: "single", // 'single', 'bulk', 'materi'
@@ -48,7 +50,8 @@ function absensiApp() {
 
     initInstallPrompt() {
       this.isAppInstalled =
-        window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
 
       window.addEventListener("beforeinstallprompt", (event) => {
         event.preventDefault();
@@ -114,10 +117,14 @@ function absensiApp() {
           this.materi = { quran: "", hadits: "", nasehat: "" };
           this.kelompok = "Umum";
           const { data } = this.supabaseClient.auth.onAuthStateChange((_event, session) => {
-            window.setTimeout(() => {
-              this.handleAuthSession(session).catch((error) => {
+            window.setTimeout(async () => {
+              try {
+                await this.handleAuthSession(session);
+              } catch (error) {
                 console.error("Supabase Auth State Error:", error);
-              });
+              } finally {
+                this.authInitialized = true;
+              }
             }, 0);
           });
           this.authSubscription = data.subscription;
@@ -170,6 +177,7 @@ function absensiApp() {
     async fetchDataFromSupabase() {
       if (!this.supabaseClient) return;
 
+      this.isLoadingAttendance = true;
       try {
         // 1. Fetch Attendance Records
         const { data: attData, error: attErr } = await this.supabaseClient
@@ -188,6 +196,8 @@ function absensiApp() {
       } catch (e) {
         console.error("Supabase data fetch error:", e);
         this.showSupabaseError(e);
+      } finally {
+        this.isLoadingAttendance = false;
       }
     },
 
@@ -275,7 +285,7 @@ function absensiApp() {
       if (role === "admin_kelompok") return true;
       if (role === "admin_laki") return targetGender === "Laki-laki";
       if (role === "admin_perempuan") return targetGender === "Perempuan";
-      
+
       return false;
     },
 
