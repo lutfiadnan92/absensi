@@ -1,5 +1,5 @@
 // Naikkan versi setiap kali file aplikasi berubah agar cache lama dibuang.
-const CACHE_VERSION = "absensi-pwa-v5";
+const CACHE_VERSION = "absensi-pwa-v21";
 
 // App shell: dicache saat install supaya aplikasi bisa dibuka offline.
 const APP_SHELL = [
@@ -7,6 +7,8 @@ const APP_SHELL = [
   "./absensi.js",
   "./crud.js",
   "./login.js",
+  "./login-component.js",
+  "./login-component.html",
   "./export.js",
   "./index.html",
   "./style.css",
