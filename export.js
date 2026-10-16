@@ -145,7 +145,7 @@ window.absensiExportMethods = {
       let tableRows = dataset
         .map(
           (r, i) => `
-            <tr>
+            <tr style="page-break-inside: avoid;">
               <td style="border: 1px solid #000; padding: 6px; text-align: center;">${i + 1}</td>
               <td style="border: 1px solid #000; padding: 6px;">${r.name}</td>
               <td style="border: 1px solid #000; padding: 6px;">${r.kelompok}</td>
@@ -182,7 +182,7 @@ window.absensiExportMethods = {
           </div>
           <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
             <thead>
-              <tr style="background-color: #f2f2f2;">
+              <tr style="background-color: #f2f2f2; page-break-inside: avoid;">
                 <th style="border: 1px solid #000; padding: 6px; width: 6%;">No</th>
                 <th style="border: 1px solid #000; padding: 6px; text-align: left;">Nama</th>
                 <th style="border: 1px solid #000; padding: 6px; text-align: left;">Kelompok</th>
@@ -202,8 +202,9 @@ window.absensiExportMethods = {
         margin: 0.5,
         filename: `Laporan_Absensi_${groupName ? `${groupName.replace(/[^a-z0-9_-]+/gi, "_")}_` : ""}${categoryName}_${new Date().toISOString().split("T")[0]}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"], avoid: ["tr", "thead"] },
       };
 
       await html2pdf().set(opt).from(pdfHtml).save();
