@@ -1,4 +1,5 @@
 function absensiApp() {
+  const STATUS_ORDER = ["Hadir", "Izin", "Sakit", "Tidak Hadir"];
   const app = {
     // State & Auth
     isLoggedIn: false,
@@ -25,7 +26,7 @@ function absensiApp() {
     records: [],
     materi: { quran: "", hadits: "", nasehat: "" },
     jenisSambung: "Pengajian Rutin",
-    currentDateDisplay: "",
+    selectedDate: new Date().toLocaleDateString("sv-SE"),
     isLoadingAttendance: false,
 
     // Tab & Filter States
@@ -38,12 +39,10 @@ function absensiApp() {
     formSingle: { name: "", gender: "Laki-laki", status: "Hadir" },
     bulkText: "",
     bulkItems: [],
+    statusSort: "none",
 
     // Initialization
     initApp() {
-      const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
-      this.currentDateDisplay = new Date().toLocaleDateString("id-ID", options);
-
       this.initInstallPrompt();
       this.initSupabase();
     },
@@ -291,14 +290,12 @@ function absensiApp() {
 
     // Computed / Filtered Records
     get filteredRecords() {
-      if (this.currentUser.role === "admin_laki") {
-        return this.records.filter((r) => r.gender === "Laki-laki");
-      }
-      if (this.currentUser.role === "admin_perempuan") {
-        return this.records.filter((r) => r.gender === "Perempuan");
-      }
-      if (this.genderFilter === "all") return this.records;
-      return this.records.filter((r) => r.gender === this.genderFilter);
+      const { role } = this.currentUser;
+      const gender =
+        role === "admin_laki" ? "Laki-laki" : role === "admin_perempuan" ? "Perempuan" : this.genderFilter;
+      const list = gender === "all" ? this.records : this.records.filter((r) => r.gender === gender);
+
+      return this.sortByStatus(list);
     },
 
     // Stats Calculation
@@ -353,6 +350,32 @@ function absensiApp() {
     capitalize(str) {
       return str.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
     },
+
+    get currentDateDisplay() {
+      if(!this.selectedDate) return "-";
+
+      return new Date(`${this.selectedDate}T00:00:00`).toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      })
+    },
+
+    sortByStatus(list) {
+      if (this.statusSort === "none") return list;
+
+      const direction = this.statusSort === "asc" ? 1 : -1;
+      
+      return [...list].sort(
+        (a, b) => direction * (STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)),
+      );
+    },
+
+    toggleStatusSort() {
+      const cycle = { none: "asc", asc: "desc", desc: "none" };
+      this.statusSort = cycle[this.statusSort];
+    }
   };
 
   Object.assign(

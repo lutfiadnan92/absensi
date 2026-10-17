@@ -41,10 +41,19 @@
       x-show="authInitialized && !isLoggedIn"
       class="w-full max-w-sm self-center my-auto"
     >
-      <div x-show="!template && !loadError" class="p-6 text-center text-sm text-gray-500" role="status">
+      <div
+        x-show="!template && !loadError"
+        class="p-6 text-center text-sm text-gray-500"
+        role="status"
+      >
         Memuat form login...
       </div>
-      <div x-show="loadError" class="p-6 text-center text-sm text-red-600" role="alert" x-text="loadError"></div>
+      <div
+        x-show="loadError"
+        class="p-6 text-center text-sm text-red-600"
+        role="alert"
+        x-text="loadError"
+      ></div>
       <div x-ref="loginContent" x-show="template" x-html="template"></div>
     </div>
 
@@ -233,7 +242,15 @@
               x-text="`Anda hanya dapat melihat dan mengelola data ${currentUser.kelompok}`"
             ></p>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 sm:items-end gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 sm:items-end gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-blue-800 mb-1">Tanggal</label>
+              <input
+                type="date"
+                x-model="selectedDate"
+                class="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+            </div>
             <div>
               <label class="block text-sm font-semibold text-blue-800 mb-1">Jenis Sambung</label>
               <input
@@ -255,24 +272,6 @@
               >
             </div>
           </div>
-          <!-- <div
-            class="text-sm text-blue-600 bg-blue-100/60 p-2.5 rounded-lg border border-blue-200/80"
-          >
-            <p class="font-medium">Catatan Hak Akses:</p>
-            <p x-show="currentUser.role === 'admin'">Anda memegang akses **Admin Utama** (Bisa kelola semua data, materi, & export).</p>
-            <p
-              x-show="currentUser.role === 'admin_laki'"
-              x-text="`Anda login sebagai Admin Laki-laki: hanya dapat menambah, mengubah, dan menghapus data Laki-laki di ${currentUser.kelompok}.`"
-            ></p>
-            <p
-              x-show="currentUser.role === 'admin_perempuan'"
-              x-text="`Anda login sebagai Admin Perempuan: hanya dapat menambah, mengubah, dan menghapus data Perempuan di ${currentUser.kelompok}.`"
-            ></p>
-            <p
-              x-show="currentUser.role === 'admin_kelompok'"
-              x-text="`Anda hanya dapat melihat dan mengelola data ${currentUser.kelompok}`"
-            ></p>
-          </div> -->
         </div>
 
         <!-- FORM SECTION (Single, Bulk, Materi) -->
@@ -821,7 +820,20 @@
                   <th class="px-4 py-3 text-gray-500 font-semibold uppercase tracking-wider">Nama</th>
                   <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Kelompok</th>
                   <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Gender</th>
-                  <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Status</th>
+                  <th
+                    class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider"
+                    :aria-sort="{ none: 'none', asc: 'ascending', desc: 'descending' }[statusSort]"
+                  >
+                    <button
+                      type="button"
+                      @click="toggleStatusSort()"
+                      class="inline-flex items-center gap-1 uppercase font-semibold tracking-wider hover:text-blue-600"
+                      title="Urutkan berdasarkan kehadiran"
+                    >
+                      Status
+                      <span x-text="statusSort === 'asc' ? '▲' : statusSort === 'desc' ? '▼' : '↕'"></span>
+                    </button>
+                  </th>
                   <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Waktu</th>
                   <th
                     class="px-3 py-3 text-center text-gray-500 font-semibold uppercase tracking-wider w-20"

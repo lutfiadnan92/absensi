@@ -200,7 +200,7 @@ window.absensiExportMethods = {
 
       const opt = {
         margin: 0.5,
-        filename: `Laporan_Absensi_${groupName ? `${groupName.replace(/[^a-z0-9_-]+/gi, "_")}_` : ""}${categoryName}_${new Date().toISOString().split("T")[0]}.pdf`,
+        filename: `Laporan_Absensi_${groupName ? `${groupName.replace(/[^a-z0-9_-]+/gi, "_")}_` : ""}${categoryName}_${this.selectedDate}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
