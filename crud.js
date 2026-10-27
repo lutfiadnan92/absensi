@@ -575,4 +575,97 @@ window.absensiCrudMethods = {
     const existingIds = new Set(this.records.map((record) => String(record.id)));
     this.selectedIds = this.selectedIds.filter((id) => existingIds.has(String(id)));
   },
+  async resetAttendanceStatus() {
+    const group = this.getCurrentGroup();
+
+    if (!group) {
+      Swal.fire("Kelompok wajib diisi", "Isi kelompok sebelum reset absensi.", "warning");
+      return;
+    }
+
+    const targets = this.records.filter(
+      (r) => r.kelompok === group && this.canUserModify(r.gender, r.kelompok),
+    );
+
+    if (targets.length === 0) {
+      Swal.fire("Data Kosong", "Tidak ada data yang dapat direset.", "info");
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: `Reset ${targets.length} data ke "Tidak Hadir"?`,
+      text: `Kondisi absensi tanggal ${this.selectedDate} akan disimpan ke histori terlebih dahulu.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#f59e0b",
+      confirmButtonText: "Ya, reset",
+      cancelButtonText: "Batal",
+    });
+
+    if (!result.isConfirmed) return;
+
+    if (this.isSupabaseConnected) {
+      Swal.fire({
+        title: "Mereset absensi...",
+        text: "Menyimpan histori dan memperbarui status, mohon tunggu.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const { data: affected, error } = await this.supabaseClient.rpc("reset_attendance_status", {
+        p_kelompok: group,
+        p_date: this.selectedDate,
+        p_jenis_sambung: this.jenisSambung,
+        p_ids: targets.map((r) => r.id),
+      });
+
+      if (error) return this.showSupabaseError(error);
+
+      await this.fetchDataFromSupabase();
+
+      return Swal.fire({
+        icon: "success",
+        title: "Reset berhasil",
+        text: `${affected} data direset & disimpan ke histori.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+
+    // Mode lokal (tanpa Supabase)
+    const resetAt = new Date().toISOString();
+    const history = JSON.parse(localStorage.getItem("attendance_history_v1") || "[]");
+
+    targets.forEach((r) => {
+      history.push({
+        id: crypto.randomUUID(),
+        attendance_date: this.selectedDate,
+        jenis_sambung: this.jenisSambung,
+        kelompok: r.kelompok,
+        name: r.name,
+        gender: r.gender,
+        status: r.status,
+        time: r.time,
+        source: r.source,
+        reset_by: this.currentUser.email,
+        reset_at: resetAt,
+      });
+      r.status = "Tidak Hadir";
+      r.time = "-";
+    });
+
+    localStorage.setItem("attendance_history_v1", JSON.stringify(history));
+    this.saveLocalFallback();
+
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: "success",
+      title: `${targets.length} data direset & disimpan ke histori`,
+      showConfirmButton: false,
+      timer: 2000,
+    });
+  },
 };

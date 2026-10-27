@@ -16,7 +16,7 @@ function absensiApp() {
 
     // Supabase Connection
     supabaseClient: null,
-    isSupabaseConnected: false,
+    isSupabaseConnected: true,
     showConfigModal: false,
     configSupabaseUrl: "https://aoqdzjrteslhxqfjcyym.supabase.co",
     configSupabaseKey:
