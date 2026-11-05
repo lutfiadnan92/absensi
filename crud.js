@@ -4,8 +4,15 @@ window.absensiCrudMethods = {
 
     if (!nameVal) return;
 
+    const kategoriUsia = this.canSetUsia() ? this.formSingle.kategori_usia || null : null;
+
+    if (this.isGenerusAdmin() && !kategoriUsia) {
+      Swal.fire("Kategori usia wajib diisi", "Pilih kategori usia generus.", "warning");
+      return;
+    }
+
     // Validasi Hak Akses Gender
-    if (!this.canUserModify(this.formSingle.gender)) {
+    if (!this.canUserModify(this.formSingle.gender, undefined, kategoriUsia)) {
       Swal.fire(
         "Akses Ditolak",
         `Anda tidak memiliki hak untuk menambah data ${this.formSingle.gender}!`,
@@ -43,6 +50,7 @@ window.absensiCrudMethods = {
       time: timeStr,
       source: "single",
       kelompok: group,
+      kategori_usia: kategoriUsia,
     };
 
     if (this.isSupabaseConnected) {
@@ -109,6 +117,7 @@ window.absensiCrudMethods = {
       name: this.capitalize(n),
       gender: defaultGender,
       status: "Hadir",
+      kategori_usia: this.canSetUsia() ? this.formSingle.kategori_usia : "",
     }));
   },
   findBulkDuplicateNames(names, group) {
@@ -141,8 +150,15 @@ window.absensiCrudMethods = {
   async saveBulkAttendance() {
     if (this.bulkItems.length === 0) return;
 
+    if (this.isGenerusAdmin() && this.bulkItems.some((i) => !i.kategori_usia)) {
+      Swal.fire("Kategori usia wajib diisi", "Lengkapi kategori usia semua nama.", "warning");
+      return;
+    }
+
     // Filter out unauthorized genders
-    const validItems = this.bulkItems.filter((i) => this.canUserModify(i.gender));
+    const validItems = this.bulkItems.filter((i) =>
+      this.canUserModify(i.gender, undefined, i.kategori_usia),
+    );
 
     if (validItems.length === 0) {
       Swal.fire(
@@ -181,6 +197,7 @@ window.absensiCrudMethods = {
       time: "-",
       source: "bulk",
       kelompok: group,
+      kategori_usia: item.kategori_usia || null,
     }));
 
     if (this.isSupabaseConnected) {
@@ -256,7 +273,7 @@ window.absensiCrudMethods = {
     });
   },
   async editRecord(record) {
-    if (!this.canUserModify(record.gender, record.kelompok)) {
+    if (!this.canUserModify(record.gender, record.kelompok, record.kategori_usia)) {
       Swal.fire("Akses Ditolak", `Anda tidak diizinkan mengubah data ${record.gender}!`, "error");
       return;
     }
@@ -291,6 +308,22 @@ window.absensiCrudMethods = {
               <option value="Sakit" ${record.status === "Sakit" ? "selected" : ""}>Sakit</option>
             </select>
           </div>
+          ${
+            this.canSetUsia()
+              ? `<div class="text-left mb-2">
+                  <label class="block font-semibold text-gray-700 mb-1">Kategori Usia</label>
+                  <select id="swal-edit-usia" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
+                    ${this.isGenerusAdmin() ? "" : `<option value="">Bukan generus</option>`}
+                    ${this.usiaOptions
+                      .map(
+                        (u) =>
+                          `<option value="${u}" ${record.kategori_usia === u ? "selected" : ""}>${u}</option>`,
+                      )
+                      .join("")}
+                  </select>
+                </div>`
+              : ""
+          }
         `,
       showCancelButton: true,
       confirmButtonText: "Simpan",
@@ -300,13 +333,21 @@ window.absensiCrudMethods = {
         const newName = this.capitalize(document.getElementById("swal-edit-name").value.trim());
         const newGender = document.getElementById("swal-edit-gender").value;
         const newStatus = document.getElementById("swal-edit-status").value;
+        const newUsia = this.canSetUsia()
+          ? document.getElementById("swal-edit-usia").value || null
+          : record.kategori_usia;
 
         if (!newName) {
           Swal.showValidationMessage("Nama wajib diisi");
           return false;
         }
 
-        if (!this.canUserModify(newGender)) {
+        if (this.isGenerusAdmin() && !newUsia) {
+          Swal.showValidationMessage("Kategori usia wajib diisi");
+          return false;
+        }
+
+        if (!this.canUserModify(newGender, record.kelompok, newUsia)) {
           Swal.showValidationMessage(
             `Anda tidak memiliki hak untuk mengubah gender menjadi ${newGender}.`,
           );
@@ -325,13 +366,13 @@ window.absensiCrudMethods = {
           return false;
         }
 
-        return { newName, newGender, newStatus };
+        return { newName, newGender, newStatus, newUsia };
       },
     });
 
     if (!result.isConfirmed) return;
 
-    const { newName, newGender, newStatus } = result.value;
+    const { newName, newGender, newStatus, newUsia } = result.value;
     const timeStr =
       newStatus === "Hadir" && record.source === "single" && record.time === "-"
         ? new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
@@ -347,6 +388,7 @@ window.absensiCrudMethods = {
           gender: newGender,
           status: newStatus,
           time: timeStr,
+          kategori_usia: newUsia,
         })
         .eq("id", record.id);
 
@@ -357,6 +399,7 @@ window.absensiCrudMethods = {
     record.gender = newGender;
     record.status = newStatus;
     record.time = timeStr;
+    record.kategori_usia = newUsia;
 
     this.saveLocalFallback();
     Swal.fire("Berhasil", "Data diperbarui!", "success");
@@ -413,9 +456,7 @@ window.absensiCrudMethods = {
     }
   },
   setGenderFilter(filter) {
-    if (this.currentUser.role === "admin_laki") filter = "Laki-laki";
-    if (this.currentUser.role === "admin_perempuan") filter = "Perempuan";
-    this.genderFilter = filter;
+    this.genderFilter = this.getLockedGender() || filter;
     this.selectedIds = [];
   },
   isAllSelected() {
@@ -426,23 +467,14 @@ window.absensiCrudMethods = {
   async applyTableBulkStatus() {
     if (!this.bulkTableStatus || this.selectedIds.length === 0) return;
 
-    const timeStr = new Date().toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
     const recordsToUpdate = this.records.filter(
       (record) =>
-        this.selectedIds.includes(record.id) && this.canUserModify(record.gender, record.kelompok),
+        this.selectedIds.includes(record.id) &&
+        this.canSetStatus(record.gender, record.kelompok, record.kategori_usia),
     );
 
     for (const record of recordsToUpdate) {
-      const updatedTime =
-        this.bulkTableStatus === "Hadir" && record.source === "single"
-          ? record.time === "-"
-            ? timeStr
-            : record.time
-          : "-";
+      const updatedTime = this.resolveAttendanceTime(record, this.bulkTableStatus);
 
       if (this.isSupabaseConnected) {
         const { error } = await this.supabaseClient
@@ -584,7 +616,7 @@ window.absensiCrudMethods = {
     }
 
     const targets = this.records.filter(
-      (r) => r.kelompok === group && this.canUserModify(r.gender, r.kelompok),
+      (r) => r.kelompok === group && this.canUserModify(r.gender, r.kelompok, r.kategori_usia),
     );
 
     if (targets.length === 0) {
@@ -666,6 +698,48 @@ window.absensiCrudMethods = {
       title: `${targets.length} data direset & disimpan ke histori`,
       showConfirmButton: false,
       timer: 2000,
+    });
+  },
+  resolveAttendanceTime(record, status) {
+    if (status !== "Hadir" || record.source !== "single") return "-";
+    if (record.time !== "-") return record.time;
+
+    return new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  },
+  async setRecordStatus(record, status) {
+    if (!this.canSetStatus(record.gender, record.kelompok, record.kategori_usia)) {
+      Swal.fire("Akses Ditolak", "Anda tidak diizinkan mengubah kehadiran data ini!", "error");
+      return;
+    }
+
+    if (record.status === status) return;
+
+    const time = this.resolveAttendanceTime(record, status);
+
+    if (this.isSupabaseConnected) {
+      const { data, error } = await this.supabaseClient
+        .from("attendance")
+        .update({ status, time })
+        .eq("id", record.id)
+        .select("id");
+
+      if (error) return this.showSupabaseError(error);
+      if (!data?.length) {
+        return this.showSupabaseError(new Error("Status tidak dapat diubah oleh role akun ini."));
+      }
+    }
+
+    record.status = status;
+    record.time = time;
+    this.saveLocalFallback();
+
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: "success",
+      title: "Status diperbarui!",
+      showConfirmButton: false,
+      timer: 1000,
     });
   },
 };

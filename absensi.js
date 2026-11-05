@@ -1,5 +1,30 @@
 function absensiApp() {
   const STATUS_ORDER = ["Hadir", "Izin", "Sakit", "Tidak Hadir"];
+  const USIA_OPTIONS = ["GP", "3M"];
+  const ATTENDANCE_ONLY_ROLES = ["petugas_laki", "petugas_perempuan"];
+  const GROUP_BOUND_ROLES = [
+    "admin_kelompok",
+    "admin_generus",
+    "admin_laki",
+    "admin_perempuan",
+    ...ATTENDANCE_ONLY_ROLES,
+  ];
+  const VALID_ROLES = ["admin", ...GROUP_BOUND_ROLES];
+  const ROLE_GENDER = {
+    admin_laki: "Laki-laki",
+    petugas_laki: "Laki-laki",
+    admin_perempuan: "Perempuan",
+    petugas_perempuan: "Perempuan",
+  };
+  const ROLE_LABELS = {
+    admin: "Super Admin",
+    admin_kelompok: "Admin Kelompok",
+    admin_generus: "Admin Generus",
+    admin_laki: "Admin Laki-laki",
+    admin_perempuan: "Admin Perempuan",
+    petugas_laki: "Petugas Absensi Laki-laki",
+    petugas_perempuan: "Petugas Absensi Perempuan",
+  };
   const app = {
     // State & Auth
     isLoggedIn: false,
@@ -36,10 +61,11 @@ function absensiApp() {
     bulkTableStatus: "",
 
     // Form Inputs
-    formSingle: { name: "", gender: "Laki-laki", status: "Hadir" },
+    formSingle: { name: "", gender: "Laki-laki", status: "Hadir", kategori_usia: "" },
     bulkText: "",
     bulkItems: [],
     statusSort: "none",
+    usiaOptions: USIA_OPTIONS,
 
     // Initialization
     initApp() {
@@ -179,10 +205,14 @@ function absensiApp() {
       this.isLoadingAttendance = true;
       try {
         // 1. Fetch Attendance Records
-        const { data: attData, error: attErr } = await this.supabaseClient
+        let query = this.supabaseClient
           .from("attendance")
           .select("*")
           .order("created_at", { ascending: true });
+
+        if (this.isGenerusAdmin()) query = query.not("kategori_usia", "is", null);
+
+        const { data: attData, error: attErr } = await query;
 
         if (attErr) throw attErr;
         if (attData) {
@@ -191,7 +221,7 @@ function absensiApp() {
         }
 
         // 2. Fetch Materi
-        await this.loadGroupMateri();
+        if (!this.isAttendanceOnlyRole()) await this.loadGroupMateri();
       } catch (e) {
         console.error("Supabase data fetch error:", e);
         this.showSupabaseError(e);
@@ -225,7 +255,7 @@ function absensiApp() {
     },
 
     isGroupBoundRole(role = this.currentUser.role) {
-      return ["admin_kelompok", "admin_laki", "admin_perempuan"].includes(role);
+      return GROUP_BOUND_ROLES.includes(role);
     },
 
     getCurrentGroup() {
@@ -269,19 +299,17 @@ function absensiApp() {
       );
     },
     getRoleBadge() {
-      if (this.currentUser.role === "admin") return "Super Admin";
-      if (this.currentUser.role === "admin_laki") return "Admin Laki-laki";
-      if (this.currentUser.role === "admin_perempuan") return "Admin Perempuan";
-      if (this.currentUser.role === "admin_kelompok") return "Admin Kelompok";
-      return "";
+      return ROLE_LABELS[this.currentUser.role] || "";
     },
 
-    canUserModify(targetGender, targetGroup = this.currentUser.kelompok) {
+    canUserModify(targetGender, targetGroup = this.currentUser.kelompok, kategoriUsia = null) {
       const { role, kelompok } = this.currentUser;
 
       if (role === "admin") return true;
+      if (this.isAttendanceOnlyRole(role)) return false;
       if (!kelompok || targetGroup !== kelompok) return false;
       if (role === "admin_kelompok") return true;
+      if (role === "admin_generus") return Boolean(kategoriUsia);
       if (role === "admin_laki") return targetGender === "Laki-laki";
       if (role === "admin_perempuan") return targetGender === "Perempuan";
 
@@ -291,9 +319,9 @@ function absensiApp() {
     // Computed / Filtered Records
     get filteredRecords() {
       const { role } = this.currentUser;
-      const gender =
-        role === "admin_laki" ? "Laki-laki" : role === "admin_perempuan" ? "Perempuan" : this.genderFilter;
-      const list = gender === "all" ? this.records : this.records.filter((r) => r.gender === gender);
+      const gender = this.getLockedGender() || this.genderFilter;
+      const list =
+        gender === "all" ? this.records : this.records.filter((r) => r.gender === gender);
 
       return this.sortByStatus(list);
     },
@@ -352,21 +380,21 @@ function absensiApp() {
     },
 
     get currentDateDisplay() {
-      if(!this.selectedDate) return "-";
+      if (!this.selectedDate) return "-";
 
       return new Date(`${this.selectedDate}T00:00:00`).toLocaleDateString("id-ID", {
         weekday: "long",
         year: "numeric",
         month: "long",
-        day: "numeric"
-      })
+        day: "numeric",
+      });
     },
 
     sortByStatus(list) {
       if (this.statusSort === "none") return list;
 
       const direction = this.statusSort === "asc" ? 1 : -1;
-      
+
       return [...list].sort(
         (a, b) => direction * (STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)),
       );
@@ -375,7 +403,44 @@ function absensiApp() {
     toggleStatusSort() {
       const cycle = { none: "asc", asc: "desc", desc: "none" };
       this.statusSort = cycle[this.statusSort];
-    }
+    },
+
+    isValidRole(role) {
+      return VALID_ROLES.includes(role);
+    },
+
+    isGenerusAdmin() {
+      return this.currentUser.role === "admin_generus";
+    },
+
+    isAttendanceOnlyRole(role = this.currentUser.role) {
+      return ATTENDANCE_ONLY_ROLES.includes(role);
+    },
+
+    getLockedGender(role = this.currentUser.role) {
+      return ROLE_GENDER[role] || null;
+    },
+
+    canSetUsia() {
+      return Boolean(this.currentUser.role) && !this.isAttendanceOnlyRole();
+    },
+
+    canViewGender(gender) {
+      const locked = this.getLockedGender();
+      return !locked || locked === gender;
+    },
+
+    canSetStatus(targetGender, targetGroup = this.currentUser.kelompok, kategoriUsia = null) {
+      if (!this.isAttendanceOnlyRole()) {
+        return this.canUserModify(targetGender, targetGroup, kategoriUsia);
+      }
+
+      const { kelompok } = this.currentUser;
+
+      return (
+        Boolean(kelompok) && targetGroup === kelompok && this.getLockedGender() === targetGender
+      );
+    },
   };
 
   Object.assign(

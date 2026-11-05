@@ -106,6 +106,7 @@
 
           <!-- Export PDF (Admin Utama atau Admin Kelompok) -->
           <button
+            x-show="!isAttendanceOnlyRole()"
             @click="runButtonAction('exportPdf', () => handleExportPdf())"
             :disabled="loadingAction !== '' || !canExportPdf()"
             :class="canExportPdf() ? 'bg-white text-blue-600 hover:bg-blue-50' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
@@ -241,8 +242,19 @@
               x-show="currentUser.role === 'admin_kelompok'"
               x-text="`Anda hanya dapat melihat dan mengelola data ${currentUser.kelompok}`"
             ></p>
+            <p
+              x-show="currentUser.role === 'admin_generus'"
+              x-text="`Anda login sebagai Admin Generus: hanya dapat mengelola data generus (${usiaOptions.join(', ')}) di ${currentUser.kelompok}.`"
+            ></p>
+            <p
+              x-show="isAttendanceOnlyRole()"
+              x-text="`Anda login sebagai ${getRoleBadge()}: hanya dapat mengatur status kehadiran data ${getLockedGender()} di ${currentUser.kelompok}.`"
+            ></p>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 sm:items-end gap-3">
+          <div
+            x-show="!isAttendanceOnlyRole()"
+            class="grid grid-cols-1 sm:grid-cols-3 sm:items-end gap-3"
+          >
             <div>
               <label class="block text-sm font-semibold text-blue-800 mb-1">Tanggal</label>
               <input
@@ -275,7 +287,10 @@
         </div>
 
         <!-- FORM SECTION (Single, Bulk, Materi) -->
-        <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+        <div
+          x-show="!isAttendanceOnlyRole()"
+          class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200"
+        >
 
           <!-- Tab Menu Header -->
           <div
@@ -334,6 +349,22 @@
             x-show="activeTab === 'single'"
             @submit.prevent="runButtonAction('saveSingle', () => saveSingleAttendance())"
           >
+            <div x-show="canSetUsia()" class="mb-3 sm:max-w-xs">
+              <label class="block text-sm font-semibold text-gray-600 mb-1">Kategori Usia (Generus)</label>
+              <select
+                x-model="formSingle.kategori_usia"
+                :required="isGenerusAdmin()"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
+              >
+                <option
+                  value=""
+                  x-text="isGenerusAdmin() ? '-- Pilih kategori usia --' : 'Bukan generus'"
+                ></option>
+                <template x-for="usia in usiaOptions" :key="usia">
+                  <option :value="usia" x-text="usia"></option>
+                </template>
+              </select>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
               <div class="sm:col-span-2">
                 <label class="block text-sm font-semibold text-gray-600 mb-1">Nama Lengkap</label>
@@ -541,7 +572,7 @@
               >
                 <template x-for="(item, idx) in bulkItems" :key="idx">
                   <div
-                    class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100 text-sm gap-2"
+                    class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100 text-sm gap-2 overflow-auto"
                   >
                     <span class="font-medium text-gray-800 capitalize" x-text="item.name"></span>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -561,6 +592,16 @@
                         <option value="Tidak Hadir">Tidak Hadir</option>
                         <option value="Izin">Izin</option>
                         <option value="Sakit">Sakit</option>
+                      </select>
+                      <select
+                        x-show="canSetUsia()"
+                        x-model="item.kategori_usia"
+                        class="px-2 py-1 border rounded text-sm bg-white outline-none"
+                      >
+                        <option value="" x-text="isGenerusAdmin() ? '-- Usia --' : 'Bukan generus'"></option>
+                        <template x-for="usia in usiaOptions" :key="usia">
+                          <option :value="usia" x-text="usia"></option>
+                        </template>
                       </select>
                     </div>
                   </div>
@@ -671,7 +712,7 @@
             class="inline-flex rounded-lg bg-gray-100 p-1 border border-gray-200 text-sm font-medium"
           >
             <button
-              x-show="!['admin_laki', 'admin_perempuan'].includes(currentUser.role)"
+              x-show="!getLockedGender()"
               type="button"
               @click="setGenderFilter('all')"
               :class="genderFilter === 'all' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
@@ -680,7 +721,7 @@
               Semua Data
             </button>
             <button
-              x-show="currentUser.role !== 'admin_perempuan'"
+              x-show="canViewGender('Laki-laki')"
               type="button"
               @click="setGenderFilter('Laki-laki')"
               :class="genderFilter === 'Laki-laki' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
@@ -689,7 +730,7 @@
               Laki-laki
             </button>
             <button
-              x-show="currentUser.role !== 'admin_laki'"
+              x-show="canViewGender('Perempuan')"
               type="button"
               @click="setGenderFilter('Perempuan')"
               :class="genderFilter === 'Perempuan' ? 'bg-white text-pink-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
@@ -700,6 +741,7 @@
           </div>
           <div class="flex gap-2">
             <button
+              x-show="!isAttendanceOnlyRole()"
               type="button"
               @click="runButtonAction('resetStatus', () => resetAttendanceStatus())"
               :disabled="loadingAction !== '' || records.length === 0"
@@ -804,6 +846,7 @@
                 Terapkan Kehadiran
               </button>
               <button
+                x-show="!isAttendanceOnlyRole()"
                 type="button"
                 @click="runButtonAction('bulkDelete', () => deleteTableBulk())"
                 :disabled="loadingAction !== ''"
@@ -848,6 +891,7 @@
                   <th class="px-4 py-3 text-gray-500 font-semibold uppercase tracking-wider">Nama</th>
                   <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Kelompok</th>
                   <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Gender</th>
+                  <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Usia</th>
                   <th
                     class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider"
                     :aria-sort="{ none: 'none', asc: 'ascending', desc: 'descending' }[statusSort]"
@@ -864,13 +908,17 @@
                   </th>
                   <th class="px-3 py-3 text-gray-500 font-semibold uppercase tracking-wider">Waktu</th>
                   <th
+                    x-show="!isAttendanceOnlyRole()"
                     class="px-3 py-3 text-center text-gray-500 font-semibold uppercase tracking-wider w-20"
                   >Aksi</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr x-show="isLoadingAttendance && filteredRecords.length === 0">
-                  <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">
+                  <td
+                    :colspan="isAttendanceOnlyRole() ? 8 : 9"
+                    class="px-4 py-8 text-center text-sm text-gray-500"
+                  >
                     <span class="inline-flex items-center gap-2">
                       <span
                         class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
@@ -908,21 +956,38 @@
                         class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800"
                       >L</span>
                     </td>
+                    <td
+                      class="px-3 py-3 text-gray-600 text-xs"
+                      x-text="record.kategori_usia || '-'"
+                    ></td>
                     <td class="px-3 py-3">
                       <span
+                        x-show="!isAttendanceOnlyRole()"
                         :class="getStatusBadgeClass(record.status)"
                         class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
                         x-text="record.status"
                       ></span>
+                      <select
+                        x-show="isAttendanceOnlyRole()"
+                        :value="record.status"
+                        :disabled="loadingAction !== '' || !canSetStatus(record.gender, record.kelompok, record.kategori_usia)"
+                        @change="runButtonAction(`status-${record.id}`, () => setRecordStatus(record, $event.target.value)).then(() => $event.target.value = record.status)"
+                        class="px-2 py-1 border rounded text-xs bg-white outline-none disabled:bg-gray-100"
+                      >
+                        <option value="Hadir">Hadir</option>
+                        <option value="Tidak Hadir">Tidak Hadir</option>
+                        <option value="Izin">Izin</option>
+                        <option value="Sakit">Sakit</option>
+                      </select>
                     </td>
                     <td class="px-3 py-3 text-gray-500" x-text="record.time"></td>
-                    <td class="px-3 py-3 text-center">
+                    <td x-show="!isAttendanceOnlyRole()" class="px-3 py-3 text-center">
                       <div class="flex items-center justify-center gap-1.5">
                         <!-- Button Edit (Cek Role) -->
                         <button
                           @click="runButtonAction(`edit-${record.id}`, () => editRecord(record))"
-                          :disabled="loadingAction !== '' || !canUserModify(record.gender, record.kelompok)"
-                          :class="canUserModify(record.gender, record.kelompok) ? 'text-blue-500 hover:text-blue-700' : 'text-gray-300 cursor-not-allowed'"
+                          :disabled="loadingAction !== '' || !canUserModify(record.gender, record.kelompok, record.kategori_usia)"
+                          :class="canUserModify(record.gender, record.kelompok, record.kategori_usia) ? 'text-blue-500 hover:text-blue-700' : 'text-gray-300 cursor-not-allowed'"
                           class="p-1"
                           title="Edit"
                         >
@@ -960,8 +1025,8 @@
                         <!-- Button Delete (Cek Role) -->
                         <button
                           @click="runButtonAction(`delete-${record.id}`, () => deleteRecord(record))"
-                          :disabled="loadingAction !== '' || !canUserModify(record.gender, record.kelompok)"
-                          :class="canUserModify(record.gender, record.kelompok) ? 'text-red-500 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'"
+                          :disabled="loadingAction !== '' || !canUserModify(record.gender, record.kelompok, record.kategori_usia)"
+                          :class="canUserModify(record.gender, record.kelompok, record.kategori_usia) ? 'text-red-500 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'"
                           class="p-1"
                           title="Hapus"
                         >

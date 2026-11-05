@@ -32,7 +32,7 @@ window.absensiLoginMethods = {
         if (this.authUserId !== user.id) return false;
         const role = roleData?.role;
 
-        if (!["admin", "admin_laki", "admin_perempuan", "admin_kelompok"].includes(role)) {
+        if (!this.isValidRole(role)) {
           throw new Error("Role akun belum diatur. Hubungi admin untuk memberikan akses.");
         }
 
@@ -149,14 +149,19 @@ window.absensiLoginMethods = {
       }
     },
     adjustGenderFormByRole() {
-      if (this.currentUser.role === "admin_laki") {
-        this.formSingle.gender = "Laki-laki";
-        this.genderFilter = "Laki-laki";
-      } else if (this.currentUser.role === "admin_perempuan") {
-        this.formSingle.gender = "Perempuan";
-        this.genderFilter = "Perempuan";
-      } else {
-        this.genderFilter = "all";
-      }
+      // if (this.currentUser.role === "admin_laki") {
+      //   this.formSingle.gender = "Laki-laki";
+      //   this.genderFilter = "Laki-laki";
+      // } else if (this.currentUser.role === "admin_perempuan") {
+      //   this.formSingle.gender = "Perempuan";
+      //   this.genderFilter = "Perempuan";
+      // } else {
+      //   this.genderFilter = "all";
+      // }
+      const lockedGender = this.getLockedGender();
+
+      this.genderFilter = lockedGender || "all";
+      
+      if (lockedGender) this.formSingle.gender = lockedGender;
     },
 };
