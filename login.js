@@ -9,6 +9,7 @@ window.absensiLoginMethods = {
         this.materi = { quran: "", hadits: "", nasehat: "" };
         this.selectedIds = [];
         this.kelompok = "Umum";
+        this.kelompokOptions = [];
         return false;
       }
 
@@ -24,7 +25,7 @@ window.absensiLoginMethods = {
       this.authSessionTask = (async () => {
         const { data: roleData, error: roleError } = await this.supabaseClient
           .from("user_roles")
-          .select("role, kelompok")
+          .select("role, kelompok, desa")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -40,6 +41,10 @@ window.absensiLoginMethods = {
           throw new Error("Kelompok akun belum diatur. Hubungi admin untuk menetapkan kelompok.");
         }
 
+        if (this.isDesaBoundRole(role) && !roleData.desa?.trim()) {
+          throw new Error("Desa akun belum diatur. Hubungi admin untuk menetapkan desa.");
+        }
+
         if (this.isGroupBoundRole(role)) this.kelompok = roleData.kelompok;
 
         this.currentUser = {
@@ -47,10 +52,12 @@ window.absensiLoginMethods = {
           role,
           displayName: user.user_metadata?.display_name || user.email || "Pengguna",
           kelompok: roleData.kelompok || "",
+          desa: roleData.desa || "",
         };
         if (role === "admin_kelompok") this.kelompok = roleData.kelompok;
         this.isLoggedIn = true;
         this.adjustGenderFormByRole();
+        if (this.isDesaBoundRole(role)) await this.loadDesaKelompok();
         await this.fetchDataFromSupabase();
         return true;
       })();

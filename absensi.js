@@ -4,12 +4,12 @@ function absensiApp() {
   const ATTENDANCE_ONLY_ROLES = ["petugas_laki", "petugas_perempuan"];
   const GROUP_BOUND_ROLES = [
     "admin_kelompok",
-    "admin_generus",
     "admin_laki",
     "admin_perempuan",
     ...ATTENDANCE_ONLY_ROLES,
   ];
-  const VALID_ROLES = ["admin", ...GROUP_BOUND_ROLES];
+  const DESA_BOUND_ROLES = ["admin_generus"];
+  const VALID_ROLES = ["admin", ...GROUP_BOUND_ROLES, ...DESA_BOUND_ROLES];
   const ROLE_GENDER = {
     admin_laki: "Laki-laki",
     petugas_laki: "Laki-laki",
@@ -66,6 +66,7 @@ function absensiApp() {
     bulkItems: [],
     statusSort: "none",
     usiaOptions: USIA_OPTIONS,
+    kelompokOptions: [],
 
     // Initialization
     initApp() {
@@ -307,9 +308,11 @@ function absensiApp() {
 
       if (role === "admin") return true;
       if (this.isAttendanceOnlyRole(role)) return false;
+      if (role === "admin_generus") {
+        return Boolean(kategoriUsia) && this.kelompokOptions.includes(targetGroup);
+      }
       if (!kelompok || targetGroup !== kelompok) return false;
       if (role === "admin_kelompok") return true;
-      if (role === "admin_generus") return Boolean(kategoriUsia);
       if (role === "admin_laki") return targetGender === "Laki-laki";
       if (role === "admin_perempuan") return targetGender === "Perempuan";
 
@@ -440,6 +443,27 @@ function absensiApp() {
       return (
         Boolean(kelompok) && targetGroup === kelompok && this.getLockedGender() === targetGender
       );
+    },
+
+    isDesaBoundRole(role = this.currentUser.role) {
+      return DESA_BOUND_ROLES.includes(role);
+    },
+
+    createEmptyUser() {
+      return { email: "", role: "", displayName: "", kelompok: "", desa: "" };
+    },
+
+    async loadDesaKelompok() {
+      const { data, error } = await this.supabaseClient
+        .from("kelompok_desa")
+        .select("kelompok")
+        .eq("desa", this.currentUser.desa)
+        .order("kelompok");
+
+      if (error) throw error;
+
+      this.kelompokOptions = data.map((row) => row.kelompok);
+      this.kelompok = this.kelompokOptions[0] ?? "";
     },
   };
 
