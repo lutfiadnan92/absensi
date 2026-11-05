@@ -381,7 +381,7 @@ window.absensiCrudMethods = {
           : "-";
 
     if (this.isSupabaseConnected) {
-      const { error } = await this.supabaseClient
+      const { data, error } = await this.supabaseClient
         .from("attendance")
         .update({
           name: newName,
@@ -390,9 +390,13 @@ window.absensiCrudMethods = {
           time: timeStr,
           kategori_usia: newUsia,
         })
-        .eq("id", record.id);
+        .eq("id", record.id)
+        .select("id");
 
       if (error) return this.showSupabaseError(error);
+      if (!data?.length) {
+        return this.showSupabaseError(new Error("Data tidak dapat diubah oleh role akun ini."));
+      }
     }
 
     record.name = newName;
@@ -405,7 +409,7 @@ window.absensiCrudMethods = {
     Swal.fire("Berhasil", "Data diperbarui!", "success");
   },
   async deleteRecord(record) {
-    if (!this.canUserModify(record.gender, record.kelompok)) {
+    if (!this.canUserModify(record.gender, record.kelompok, record.kategori_usia)) {
       Swal.fire("Akses Ditolak", `Anda tidak diizinkan menghapus data ${record.gender}!`, "error");
 
       return;
@@ -477,15 +481,19 @@ window.absensiCrudMethods = {
       const updatedTime = this.resolveAttendanceTime(record, this.bulkTableStatus);
 
       if (this.isSupabaseConnected) {
-        const { error } = await this.supabaseClient
+        const { data, error } = await this.supabaseClient
           .from("attendance")
           .update({
             status: this.bulkTableStatus,
             time: updatedTime,
           })
-          .eq("id", record.id);
+          .eq("id", record.id)
+          .select("id");
 
         if (error) return this.showSupabaseError(error);
+        if (!data?.length) {
+          return this.showSupabaseError(new Error("Sebagian status tidak dapat diubah oleh role akun ini."));
+        }
       }
 
       record.status = this.bulkTableStatus;
