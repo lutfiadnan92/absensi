@@ -244,11 +244,15 @@
             ></p>
             <p
               x-show="currentUser.role === 'admin_generus'"
-              x-text="`Anda login sebagai Admin Generus: dapat mengelola data generus (${usiaOptions.join(', ')}) di semua kelompok Desa ${currentUser.desa}.`"
+              x-text="`Anda login sebagai Admin Generus: dapat mengelola dan export data generus (${usiaOptions.join(', ')}) di semua kelompok Desa ${currentUser.desa}.`"
             ></p>
             <p
               x-show="isAttendanceOnlyRole()"
               x-text="`Anda login sebagai ${getRoleBadge()}: hanya dapat mengatur status kehadiran data ${getLockedGender()} di ${currentUser.kelompok}.`"
+            ></p>
+            <p
+              x-show="currentUser.role === 'admin_desa'"
+              x-text="`Anda login sebagai Admin Desa: dapat mengelola seluruh data absensi dan materi di semua kelompok Desa ${currentUser.desa}, serta export PDF per kelompok.`"
             ></p>
           </div>
           <div
@@ -719,36 +723,50 @@
         <div
           class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3"
         >
-          <div
-            class="inline-flex rounded-lg bg-gray-100 p-1 border border-gray-200 text-sm font-medium"
-          >
-            <button
-              x-show="!getLockedGender()"
-              type="button"
-              @click="setGenderFilter('all')"
-              :class="genderFilter === 'all' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
-              class="px-3 py-1.5 rounded-md transition-all"
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div
+              class="inline-flex rounded-lg bg-gray-100 p-1 border border-gray-200 text-sm font-medium"
             >
-              Semua Data
-            </button>
-            <button
-              x-show="canViewGender('Laki-laki')"
-              type="button"
-              @click="setGenderFilter('Laki-laki')"
-              :class="genderFilter === 'Laki-laki' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
-              class="px-3 py-1.5 rounded-md transition-all"
+              <button
+                x-show="!getLockedGender()"
+                type="button"
+                @click="setGenderFilter('all')"
+                :class="genderFilter === 'all' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
+                class="px-3 py-1.5 rounded-md transition-all"
+              >
+                Semua Data
+              </button>
+              <button
+                x-show="canViewGender('Laki-laki')"
+                type="button"
+                @click="setGenderFilter('Laki-laki')"
+                :class="genderFilter === 'Laki-laki' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
+                class="px-3 py-1.5 rounded-md transition-all"
+              >
+                Laki-laki
+              </button>
+              <button
+                x-show="canViewGender('Perempuan')"
+                type="button"
+                @click="setGenderFilter('Perempuan')"
+                :class="genderFilter === 'Perempuan' ? 'bg-white text-pink-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
+                class="px-3 py-1.5 rounded-md transition-all"
+              >
+                Perempuan
+              </button>
+            </div>
+            <select
+              x-show="canFilterByGroup()"
+              x-model="groupFilter"
+              @change="clearSelectedIds()"
+              aria-label="Filter berdasarkan kelompok"
+              class="w-full sm:w-auto px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Laki-laki
-            </button>
-            <button
-              x-show="canViewGender('Perempuan')"
-              type="button"
-              @click="setGenderFilter('Perempuan')"
-              :class="genderFilter === 'Perempuan' ? 'bg-white text-pink-600 shadow-sm font-bold' : 'text-gray-600 hover:text-blue-600'"
-              class="px-3 py-1.5 rounded-md transition-all"
-            >
-              Perempuan
-            </button>
+              <option value="">Semua Kelompok</option>
+              <template x-for="kelompokName in kelompokOptions" :key="kelompokName">
+                <option :value="kelompokName" x-text="kelompokName"></option>
+              </template>
+            </select>
           </div>
           <div class="flex gap-2">
             <button

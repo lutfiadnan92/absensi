@@ -10,6 +10,7 @@ window.absensiLoginMethods = {
         this.selectedIds = [];
         this.kelompok = "Umum";
         this.kelompokOptions = [];
+        this.groupFilter = "";
         return false;
       }
 
@@ -19,6 +20,7 @@ window.absensiLoginMethods = {
       }
 
       this.authUserId = user.id;
+      this.groupFilter = "";
       this.records = [];
       this.materi = { quran: "", hadits: "", nasehat: "" };
       this.selectedIds = [];

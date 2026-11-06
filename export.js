@@ -1,123 +1,138 @@
 window.absensiExportMethods = {
-    async handleExportPdf() {
-      if (!this.canExportPdf()) {
-        Swal.fire(
-          "Akses Ditolak",
-          "Fitur Export PDF hanya dapat dilakukan oleh Admin Utama atau Admin Kelompok.",
-          "error",
-        );
-        return;
-      }
+  getPdfExportJobs(genderOption) {
+    const maleJob = { categoryName: "Laki-laki", gender: "Laki-laki" };
+    const femaleJob = { categoryName: "Perempuan", gender: "Perempuan" };
+    const jobsByOption = {
+      all: [{ categoryName: "Gabungan", gender: null }],
+      laki: [maleJob],
+      perempuan: [femaleJob],
+      both: [maleJob, femaleJob],
+    };
 
-      const isGroupAdmin = this.currentUser.role === "admin_kelompok";
-      const groupName = isGroupAdmin ? this.currentUser.kelompok : "";
-      const exportRecords = isGroupAdmin
-        ? this.records.filter((record) => record.kelompok === groupName)
-        : this.records;
+    return jobsByOption[genderOption] ?? [];
+  },
+  askPdfExportOptions(lockedGroupName) {
+    const selectClass =
+      "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white";
+    const groupOptionsHtml = this.kelompokOptions
+      .map(
+        (group) =>
+          `<option value="${group}" ${group === this.kelompok ? "selected" : ""}>${group}</option>`,
+      )
+      .join("");
+    const groupFieldHtml = this.isDesaBoundRole()
+      ? `<div class="text-left mb-3">
+         <label for="swal-export-group" class="block font-semibold text-gray-700 mb-1">Kelompok</label>
+         <select id="swal-export-group" class="${selectClass}">
+           <option value="">Semua Kelompok Desa ${this.currentUser.desa}</option>
+           ${groupOptionsHtml}
+         </select>
+       </div>`
+      : "";
 
-      if (exportRecords.length === 0) {
-        Swal.fire("Data Kosong", "Tidak ada data absensi untuk diexport!", "info");
-        return;
-      }
+    return Swal.fire({
+      title: lockedGroupName ? `Export PDF ${lockedGroupName}` : "Export PDF Laporan",
+      icon: "question",
+      html: `
+      ${groupFieldHtml}
+      <div class="text-left">
+        <label for="swal-export-gender" class="block font-semibold text-gray-700 mb-1">Data</label>
+        <select id="swal-export-gender" class="${selectClass}">
+          <option value="all">Semua Data (Gabungan L & P)</option>
+          <option value="laki">Khusus Laki-laki</option>
+          <option value="perempuan">Khusus Perempuan</option>
+          <option value="both">2 File Terpisah (1 File L & 1 File P)</option>
+        </select>
+      </div>`,
+      showCancelButton: true,
+      confirmButtonText: "Download PDF",
+      confirmButtonColor: "#2563eb",
+      preConfirm: () => ({
+        genderOption: document.getElementById("swal-export-gender").value,
+        selectedGroup: document.getElementById("swal-export-group")?.value ?? lockedGroupName,
+      }),
+    });
+  },
+  async handleExportPdf() {
+    if (!this.canExportPdf()) {
+      Swal.fire("Akses Ditolak", "Fitur Export PDF hanya dapat dilakukan oleh admin.", "error");
+      return;
+    }
 
-      const result = await Swal.fire({
-        title: isGroupAdmin ? `Export PDF ${groupName}` : "Export PDF Laporan",
-        text: isGroupAdmin
-          ? `Laporan hanya akan berisi data ${groupName}.`
-          : "Pilih data yang ingin diexport:",
-        icon: "question",
-        input: "select",
-        inputOptions: {
-          all: "Semua Data (Gabungan L & P)",
-          laki: "Khusus Laki-laki",
-          perempuan: "Khusus Perempuan",
-          both: "2 File Terpisah (1 File L & 1 File P)",
-        },
-        inputValue: "all",
-        showCancelButton: true,
-        confirmButtonText: "Download PDF",
-        confirmButtonColor: "#2563eb",
-        customClass: {
-          input:
-            "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white",
-        },
+    const lockedGroupName =
+      this.currentUser.role === "admin_kelompok" ? this.currentUser.kelompok : "";
+    const scopedRecords = lockedGroupName
+      ? this.records.filter((record) => record.kelompok === lockedGroupName)
+      : this.records;
+
+    if (scopedRecords.length === 0) {
+      Swal.fire("Data Kosong", "Tidak ada data absensi untuk diexport!", "info");
+      return;
+    }
+
+    const result = await this.askPdfExportOptions(lockedGroupName);
+    if (!result.isConfirmed) return;
+
+    const { genderOption, selectedGroup } = result.value;
+    const exportRecords = selectedGroup
+      ? scopedRecords.filter((record) => record.kelompok === selectedGroup)
+      : scopedRecords;
+    const reportGroupLabel =
+      selectedGroup || (this.isDesaBoundRole() ? `Desa ${this.currentUser.desa}` : "");
+    // Materi yang dimuat hanya milik kelompok di header; jangan dipasang di laporan kelompok lain.
+    const reportMateri =
+      this.isDesaBoundRole() && selectedGroup !== this.kelompok ? null : this.materi;
+
+    const exportJobs = this.getPdfExportJobs(genderOption);
+    const shouldShowProgress = exportJobs.length > 1;
+    let exportedCount = 0;
+
+    if (shouldShowProgress) {
+      Swal.fire({
+        title: "Memproses Export PDF...",
+        text: `Mohon tunggu sebentar, sedang menyiapkan ${exportJobs.length} file PDF.`,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
       });
-      if (!result.isConfirmed) return;
+    }
 
-      const opt = result.value;
-      let exportedCount = 0;
-      if (opt === "all") {
-        exportedCount += Number(await this.renderPdf(exportRecords, "Gabungan", groupName));
-      } else if (opt === "laki") {
+    try {
+      for (const { categoryName, gender } of exportJobs) {
+        const dataset = gender
+          ? exportRecords.filter((record) => record.gender === gender)
+          : exportRecords;
         exportedCount += Number(
-          await this.renderPdf(
-            exportRecords.filter((r) => r.gender === "Laki-laki"),
-            "Laki-laki",
-            groupName,
-          ),
+          await this.renderPdf(dataset, categoryName, reportGroupLabel, reportMateri),
         );
-      } else if (opt === "perempuan") {
-        exportedCount += Number(
-          await this.renderPdf(
-            exportRecords.filter((r) => r.gender === "Perempuan"),
-            "Perempuan",
-            groupName,
-          ),
-        );
-      } else if (opt === "both") {
-        Swal.fire({
-          title: "Memproses Export PDF...",
-          text: "Mohon tunggu sebentar, sedang menyiapkan 2 file PDF.",
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          },
-        });
-
-        try {
-          exportedCount += Number(
-            await this.renderPdf(
-              exportRecords.filter((r) => r.gender === "Laki-laki"),
-              "Laki-laki",
-              groupName,
-            ),
-          );
-          exportedCount += Number(
-            await this.renderPdf(
-              exportRecords.filter((r) => r.gender === "Perempuan"),
-              "Perempuan",
-              groupName,
-            ),
-          );
-        } finally {
-          Swal.close();
-        }
       }
+    } finally {
+      if (shouldShowProgress) Swal.close();
+    }
 
-      if (exportedCount > 0) {
-        Swal.fire({
-          icon: "success",
-          title: "Export berhasil",
-          text: `${exportedCount} file PDF berhasil dibuat${groupName ? ` untuk ${groupName}` : ""}.`,
-          confirmButtonColor: "#2563eb",
-        });
-      }
-    },
-    async renderPdf(dataset, categoryName, groupName = "") {
-      if (dataset.length === 0) {
-        Swal.fire("Data Kosong", `Tidak ada data untuk kategori ${categoryName}`, "info");
-        return false;
-      }
+    if (exportedCount > 0) {
+      Swal.fire({
+        icon: "success",
+        title: "Export berhasil",
+        text: `${exportedCount} file PDF berhasil dibuat${reportGroupLabel ? ` untuk ${reportGroupLabel}` : ""}.`,
+        confirmButtonColor: "#2563eb",
+      });
+    }
+  },
+  async renderPdf(dataset, categoryName, groupName = "", materi = this.materi) {
+    if (dataset.length === 0) {
+      Swal.fire("Data Kosong", `Tidak ada data untuk kategori ${categoryName}`, "info");
+      return false;
+    }
 
-      const hadir = dataset.filter((r) => r.status === "Hadir").length;
-      const tidakHadir = dataset.filter((r) => r.status === "Tidak Hadir").length;
-      const izin = dataset.filter((r) => r.status === "Izin").length;
-      const sakit = dataset.filter((r) => r.status === "Sakit").length;
-      const percentage = (count) => Math.round((count / dataset.length) * 100);
+    const hadir = dataset.filter((r) => r.status === "Hadir").length;
+    const tidakHadir = dataset.filter((r) => r.status === "Tidak Hadir").length;
+    const izin = dataset.filter((r) => r.status === "Izin").length;
+    const sakit = dataset.filter((r) => r.status === "Sakit").length;
+    const percentage = (count) => Math.round((count / dataset.length) * 100);
 
-      let materiHtml = "";
-      if (this.materi.quran || this.materi.hadits || this.materi.nasehat) {
-        materiHtml = `
+    let materiHtml = "";
+    if (materi && (materi.quran || materi.hadits || materi.nasehat)) {
+      materiHtml = `
           <div
             style="margin-bottom: 12px; font-size: 12px; border: 1px solid #2563eb; background-color: #eff6ff; padding: 10px; border-radius: 6px;"
           >
@@ -126,25 +141,28 @@ window.absensiExportMethods = {
             >
               MATERI PEMBELAJARAN
             </div>
-            ${this.materi.quran
-              ? `<div><b>Al-Qur'an:</b> <span class="capitalize">${this.materi.quran}</span></div>`
-              : ""
+            ${
+              materi.quran
+                ? `<div><b>Al-Qur'an:</b> <span class="capitalize">${this.materi.quran}</span></div>`
+                : ""
             }
-            ${this.materi.hadits
-              ? `<div><b>Al-Hadits:</b> <span class="capitalize">${this.materi.hadits}</span></div>`
-              : ""
+            ${
+              materi.hadits
+                ? `<div><b>Al-Hadits:</b> <span class="capitalize">${this.materi.hadits}</span></div>`
+                : ""
             }
-            ${this.materi.nasehat
-              ? `<div><b>Nasehat Agama:</b> <span class="capitalize">${this.materi.nasehat}</span></div>`
-              : ""
+            ${
+              materi.nasehat
+                ? `<div><b>Nasehat Agama:</b> <span class="capitalize">${this.materi.nasehat}</span></div>`
+                : ""
             }
           </div>
         `;
-      }
+    }
 
-      let tableRows = dataset
-        .map(
-          (r, i) => `
+    let tableRows = dataset
+      .map(
+        (r, i) => `
             <tr style="page-break-inside: avoid;">
               <td style="border: 1px solid #000; padding: 6px; text-align: center;">${i + 1}</td>
               <td style="border: 1px solid #000; padding: 6px;">${r.name}</td>
@@ -154,10 +172,10 @@ window.absensiExportMethods = {
               <td style="border: 1px solid #000; padding: 6px; text-align: center;">${r.time}</td>
             </tr>
         `,
-        )
-        .join("");
+      )
+      .join("");
 
-      const pdfHtml = `
+    const pdfHtml = `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #000;">
           <h2 style="text-align: center; margin-bottom: 4px; text-transform: uppercase;">
             ABSENSI ${this.jenisSambung.toUpperCase()} (${categoryName.toUpperCase()})
@@ -198,16 +216,16 @@ window.absensiExportMethods = {
         </div>
     `;
 
-      const opt = {
-        margin: 0.5,
-        filename: `Laporan_Absensi_${groupName ? `${groupName.replace(/[^a-z0-9_-]+/gi, "_")}_` : ""}${categoryName}_${this.selectedDate}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], avoid: ["tr", "thead"] },
-      };
+    const opt = {
+      margin: 0.5,
+      filename: `Laporan_Absensi_${groupName ? `${groupName.replace(/[^a-z0-9_-]+/gi, "_")}_` : ""}${categoryName}_${this.selectedDate}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"], avoid: ["tr", "thead"] },
+    };
 
-      await html2pdf().set(opt).from(pdfHtml).save();
-      return true;
-    },
+    await html2pdf().set(opt).from(pdfHtml).save();
+    return true;
+  },
 };

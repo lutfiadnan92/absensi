@@ -8,7 +8,7 @@ function absensiApp() {
     "admin_perempuan",
     ...ATTENDANCE_ONLY_ROLES,
   ];
-  const DESA_BOUND_ROLES = ["admin_generus"];
+  const DESA_BOUND_ROLES = ["admin_generus", "admin_desa"];
   const VALID_ROLES = ["admin", ...GROUP_BOUND_ROLES, ...DESA_BOUND_ROLES];
   const ROLE_GENDER = {
     admin_laki: "Laki-laki",
@@ -24,7 +24,9 @@ function absensiApp() {
     admin_perempuan: "Admin Perempuan",
     petugas_laki: "Petugas Absensi Laki-laki",
     petugas_perempuan: "Petugas Absensi Perempuan",
+    admin_desa: "Admin Desa",
   };
+  const MATERI_MANAGER_ROLES = ["admin", "admin_kelompok", "admin_desa", "admin_generus"];
   const app = {
     // State & Auth
     isLoggedIn: false,
@@ -59,6 +61,7 @@ function absensiApp() {
     genderFilter: "all", // 'all', 'Laki-laki', 'Perempuan'
     selectedIds: [],
     bulkTableStatus: "",
+    groupFilter: "", // "" = semua kelompok
 
     // Form Inputs
     formSingle: { name: "", gender: "Laki-laki", status: "Hadir", kategori_usia: "" },
@@ -68,7 +71,6 @@ function absensiApp() {
     usiaOptions: USIA_OPTIONS,
     kelompokOptions: [],
 
-    // Initialization
     initApp() {
       this.initInstallPrompt();
       this.initSupabase();
@@ -199,7 +201,6 @@ function absensiApp() {
       localStorage.setItem("materi_v3", JSON.stringify(this.materi));
     },
 
-    // Fetch Data from Supabase
     async fetchDataFromSupabase() {
       if (!this.supabaseClient) return;
 
@@ -290,15 +291,18 @@ function absensiApp() {
     },
 
     canManageMateri() {
-      return ["admin", "admin_kelompok"].includes(this.currentUser.role);
+      return MATERI_MANAGER_ROLES.includes(this.currentUser.role);
     },
 
     canExportPdf() {
-      return (
-        this.currentUser.role === "admin" ||
-        (this.currentUser.role === "admin_kelompok" && Boolean(this.currentUser.kelompok))
-      );
+      const { role, kelompok } = this.currentUser;
+
+      if (role === "admin") return true;
+      if (role === "admin_kelompok") return Boolean(kelompok);
+
+      return this.isDesaBoundRole(role);
     },
+
     getRoleBadge() {
       return ROLE_LABELS[this.currentUser.role] || "";
     },
@@ -308,8 +312,9 @@ function absensiApp() {
 
       if (role === "admin") return true;
       if (this.isAttendanceOnlyRole(role)) return false;
-      if (role === "admin_generus") {
-        return Boolean(kategoriUsia) && this.kelompokOptions.includes(targetGroup);
+      if (this.isDesaBoundRole(role)) {
+        const isGroupInDesa = this.kelompokOptions.includes(targetGroup || this.kelompok);
+        return role === "admin_desa" ? isGroupInDesa : Boolean(kategoriUsia) && isGroupInDesa;
       }
       if (!kelompok || targetGroup !== kelompok) return false;
       if (role === "admin_kelompok") return true;
@@ -319,17 +324,17 @@ function absensiApp() {
       return false;
     },
 
-    // Computed / Filtered Records
     get filteredRecords() {
-      const { role } = this.currentUser;
       const gender = this.getLockedGender() || this.genderFilter;
-      const list =
+      const recordsByGender =
         gender === "all" ? this.records : this.records.filter((r) => r.gender === gender);
+      const recordsByGroup = this.groupFilter
+        ? recordsByGender.filter((r) => r.kelompok === this.groupFilter)
+        : recordsByGender;
 
-      return this.sortByStatus(list);
+      return this.sortByStatus(recordsByGroup);
     },
 
-    // Stats Calculation
     get stats() {
       const calc = (status = null) => {
         const list = status ? this.records.filter((r) => r.status === status) : this.records;
@@ -464,6 +469,10 @@ function absensiApp() {
 
       this.kelompokOptions = data.map((row) => row.kelompok);
       this.kelompok = this.kelompokOptions[0] ?? "";
+    },
+
+    canFilterByGroup() {
+      return this.isDesaBoundRole();
     },
   };
 

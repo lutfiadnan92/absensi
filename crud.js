@@ -750,4 +750,7 @@ window.absensiCrudMethods = {
       timer: 1000,
     });
   },
+  clearSelectedIds() {
+    this.selectedIds = [];
+  },
 };
